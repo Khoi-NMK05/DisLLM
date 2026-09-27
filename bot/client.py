@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 
 from bot.config import BotConfig
+from bot.database import DatabaseManager
 from bot.memory import MemoryManager
 from bot.services.ollama_service import OllamaService
 from bot.services.vision_service import VisionService
@@ -16,12 +17,13 @@ logger = logging.getLogger(__name__)
 class TsundereBot(commands.Bot):
     """
     Custom Discord Bot client subclass that encapsulates bot lifecycle,
-    service injection, and cog extension management.
+    service injection, database management, and cog extension management.
     """
 
     def __init__(
         self,
         config: BotConfig,
+        db_manager: DatabaseManager | None = None,
         memory_manager: MemoryManager | None = None,
         ollama_service: OllamaService | None = None,
         vision_service: VisionService | None = None,
@@ -39,7 +41,10 @@ class TsundereBot(commands.Bot):
         )
 
         self.config = config
-        self.memory_manager = memory_manager or MemoryManager(max_turns=config.max_history_turns)
+        self.db_manager = db_manager or DatabaseManager(db_path=config.db_path)
+        self.memory_manager = memory_manager or MemoryManager(
+            max_turns=config.max_history_turns, db_manager=self.db_manager
+        )
         self.ollama_service = ollama_service or OllamaService(config=config)
         self.vision_service = vision_service or VisionService(config=config)
         self.image_processor = image_processor or ImageProcessor(max_dimension=config.vision_max_dimension)
@@ -47,10 +52,26 @@ class TsundereBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         """Asynchronous initialization hook called before the bot connects to Discord gateway."""
+        logger.info("Initializing database...")
+        await self.db_manager.initialize()
+
         logger.info("Loading extensions/cogs...")
         await self.load_extension("bot.cogs.commands")
         await self.load_extension("bot.cogs.chat")
         logger.info("Extensions loaded successfully.")
+
+        try:
+            logger.info("Syncing application command tree...")
+            synced = await self.tree.sync()
+            logger.info("Successfully synced %d application command(s).", len(synced))
+        except Exception as err:
+            logger.warning("Failed to sync application command tree: %s", err)
+
+    async def close(self) -> None:
+        """Lifecycle cleanup hook called when the bot is shutting down."""
+        logger.info("Closing database connection...")
+        await self.db_manager.close()
+        await super().close()
 
     async def on_ready(self) -> None:
         """Lifecycle event triggered when the bot is fully connected and ready."""

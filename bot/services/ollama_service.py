@@ -78,6 +78,7 @@ class OllamaService:
             model=self.config.ollama_model,
             messages=messages_payload,
             think=False,
+            keep_alive=getattr(self.config, "keep_alive", "24h"),
             options={
                 "temperature": self.config.temperature,
                 "top_p": self.config.top_p,
@@ -86,7 +87,6 @@ class OllamaService:
                 "num_predict": self.config.num_predict,
                 "num_ctx": getattr(self.config, "num_ctx", 8192),
             },
-
         )
 
         raw_content = response.get("message", {}).get("content", "").strip()

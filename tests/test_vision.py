@@ -135,7 +135,7 @@ class TestVisionService(unittest.IsolatedAsyncioTestCase):
         config = BotConfig(
             discord_token="fake_token",
             vision_enabled=True,
-            vision_model="qwen2.5vl:3b",
+            vision_model="qwen2.5vl:7b-instruct-q4_K_M",
             vision_num_predict=1024,
         )
         mock_client = AsyncMock()
@@ -151,7 +151,7 @@ class TestVisionService(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("Problem 2", description)
         call_kwargs = mock_client.chat.call_args.kwargs
-        self.assertEqual(call_kwargs["model"], "qwen2.5vl:3b")
+        self.assertEqual(call_kwargs["model"], "qwen2.5vl:7b-instruct-q4_K_M")
         prompt_content = call_kwargs["messages"][0]["content"]
         self.assertIn(user_query, prompt_content)
         self.assertIn("transcribe", prompt_content)
@@ -183,9 +183,13 @@ class TestVisionService(unittest.IsolatedAsyncioTestCase):
             await service.describe_image(b"fake_image_bytes")
 
 
-class TestTextHistoryWithVision(unittest.TestCase):
-    def test_text_conversion_in_memory_manager(self) -> None:
-        memory = MemoryManager(max_turns=3)
+class TestTextHistoryWithVision(unittest.IsolatedAsyncioTestCase):
+    async def test_text_conversion_in_memory_manager(self) -> None:
+        from bot.database import DatabaseManager
+
+        db = DatabaseManager(":memory:")
+        await db.initialize()
+        memory = MemoryManager(max_turns=3, db_manager=db)
 
         # Simulate turn 1 with image converted to text
         image_desc = "A small orange kitten tangled in yarn."
@@ -193,15 +197,16 @@ class TestTextHistoryWithVision(unittest.TestCase):
         formatted_prompt = f"User1: [Attached Image: {image_desc}]\n{user_prompt}"
         assistant_reply = "べつに, kittens always make a mess. Don't let her chew the string..."
 
-        memory.add_turn(
+        await memory.add_turn(
             guild_id=1,
             channel_id=100,
             user_content=formatted_prompt,
             assistant_content=assistant_reply,
+            user_id=1001,
         )
 
         # Verify memory contains only string text
-        history = memory.get_history(guild_id=1, channel_id=100)
+        history = await memory.get_history(guild_id=1, channel_id=100)
         self.assertEqual(len(history), 2)
         self.assertIsInstance(history[0]["content"], str)
         self.assertIn("[Attached Image: A small orange kitten tangled in yarn.]", history[0]["content"])
@@ -210,17 +215,19 @@ class TestTextHistoryWithVision(unittest.TestCase):
         # Simulate turn 2 (follow-up query referencing the image)
         turn2_prompt = "User1: Is she okay though?"
         turn2_reply = "Of course she's fine, baka! Just untangle her already."
-        memory.add_turn(
+        await memory.add_turn(
             guild_id=1,
             channel_id=100,
             user_content=turn2_prompt,
             assistant_content=turn2_reply,
+            user_id=1001,
         )
 
-        updated_history = memory.get_history(guild_id=1, channel_id=100)
+        updated_history = await memory.get_history(guild_id=1, channel_id=100)
         self.assertEqual(len(updated_history), 4)
         # Turn 1's image description remains in text form
         self.assertIn("tangled in yarn", updated_history[0]["content"])
+        await db.close()
 
 
 if __name__ == "__main__":

@@ -65,14 +65,15 @@ The codebase is structured around single-responsibility classes:
 | Class | Location | Responsibility |
 | :--- | :--- | :--- |
 | **`BotConfig`** | `bot/config.py` | Encapsulates bot tokens, hyperparameters, prompts, vision settings, and loads from `.env`. |
-| **`MemoryManager`** | `bot/memory.py` | Tracks and caps multi-turn conversation history keyed by `(guild_id, channel_id)`. |
+| **`DatabaseManager`** | `bot/database.py` | Asynchronous SQLite database manager for persistent conversation turns and user data. |
+| **`MemoryManager`** | `bot/memory.py` | Interfaces with `DatabaseManager` to cap and retrieve chronological channel context. |
 | **`OllamaService`** | `bot/services/ollama_service.py` | Communicates with Ollama asynchronously, strips `<think>` tags, and extracts emoji reactions. |
 | **`VisionService`** | `bot/services/vision_service.py` | Interfaces with a lightweight vision model (e.g., `moondream`) to generate concise image descriptions. |
 | **`ImageProcessor`** | `bot/utils/image.py` | Validates MIME types, extracts animated GIF first frames, converts to RGB, and downscales images non-blockingly. |
 | **`TextSplitter`** | `bot/utils/text.py` | Slices text into chunks obeying Discord's character limit using newline and word boundaries. |
-| **`TsundereBot`** | `bot/client.py` | Custom `commands.Bot` subclass managing dependency injection and async cog loading. |
+| **`TsundereBot`** | `bot/client.py` | Custom `commands.Bot` subclass managing dependency injection, DB lifecycle, and tree syncing. |
 | **`ChatCog`** | `bot/cogs/chat.py` | Discord listener cog handling `@bot` pings, vision attachment analysis, typing indicator, and reply dispatch. |
-| **`GeneralCog`** | `bot/cogs/commands.py` | Discord commands cog handling commands like `!clear_memory`. |
+| **`GeneralCog`** | `bot/cogs/commands.py` | Discord Application Commands (Hybrid Slash/Prefix) handling admin commands (`/clear_memory`, `/forget_me @user`). |
 
 
 ---
@@ -86,7 +87,7 @@ The codebase is structured around single-responsibility classes:
   - Pull the chat and vision models:
     ```bash
     ollama pull qwen3.5:9b
-    ollama pull qwen2.5vl:3b
+    ollama pull qwen2.5vl:7b-instruct-q4_K_M
     ```
 - **Discord Bot Token**:
   - Create an application in the [Discord Developer Portal](https://discord.com/developers/applications).
@@ -121,11 +122,11 @@ Edit `.env`:
 ```env
 DISCORD_BOT_TOKEN=your_token_here
 OLLAMA_MODEL=qwen3.5:9b
-NUM_PREDICT=2048
+NUM_PREDICT=512
 NUM_CTX=8192
 
 VISION_ENABLED=true
-VISION_MODEL=qwen2.5vl:3b
+VISION_MODEL=qwen2.5vl:7b-instruct-q4_K_M
 VISION_MAX_DIMENSION=1536
 VISION_NUM_PREDICT=1024
 ```
@@ -150,10 +151,17 @@ python main.py
   ```text
   @TsundereBot What is recursion?
   ```
-- Clear channel memory:
-  ```text
-  !clear_memory
-  ```
+- Memory administration commands (Admin only: User ID `244489698771206146`):
+  - Clear channel memory:
+    ```text
+    /clear_memory
+    !clear_memory
+    ```
+  - Purge stored messages and history for a specific mentioned user:
+    ```text
+    /forget_me user:@Someone
+    !forget_me @Someone
+    ```
 
 ---
 

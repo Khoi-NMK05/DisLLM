@@ -5,6 +5,7 @@ Maintained for backwards compatibility. Delegates to `main.py` and the `bot` pac
 
 from bot import (
     BotConfig,
+    DatabaseManager,
     ImageProcessor,
     MemoryManager,
     OllamaService,
@@ -18,6 +19,7 @@ from main import main
 __all__ = [
     "SYSTEM_PROMPT",
     "BotConfig",
+    "DatabaseManager",
     "ImageProcessor",
     "MemoryManager",
     "OllamaService",

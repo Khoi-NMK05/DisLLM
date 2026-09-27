@@ -84,6 +84,7 @@ class VisionService:
                 model=self.config.vision_model,
                 messages=messages_payload,
                 think=False,
+                keep_alive=getattr(self.config, "keep_alive", "24h"),
                 options={
                     "temperature": 0.2,
                     "num_predict": num_predict,

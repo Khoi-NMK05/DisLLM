@@ -1,63 +1,85 @@
+from __future__ import annotations
+
+from bot.database import DatabaseManager
+
+
 class MemoryManager:
     """
-    Manages in-memory multi-turn conversation history per Discord guild and channel.
-    Caps history size to prevent context window overflow.
+    Manages persistent multi-turn conversation history per Discord guild and channel.
+    Uses DatabaseManager (SQLite) for durable persistence and provides asynchronous operations.
     """
 
-    def __init__(self, max_turns: int = 10) -> None:
+    def __init__(
+        self,
+        max_turns: int = 15,
+        db_manager: DatabaseManager | None = None,
+    ) -> None:
         self.max_turns = max_turns
-        # Key: (guild_id, channel_id) -> list of {"role": "user"|"assistant", "content": "..."}
-        self._memories: dict[tuple[int | None, int], list[dict[str, str]]] = {}
+        self.db_manager = db_manager or DatabaseManager()
+        self._in_memory: dict[tuple[int | None, int], list[dict[str, str]]] = {}
 
-    def _get_key(self, guild_id: int | None, channel_id: int) -> tuple[int | None, int]:
-        return (guild_id, channel_id)
+    async def get_history(
+        self, guild_id: int | None, channel_id: int
+    ) -> list[dict[str, str]]:
+        """Returns the chronological conversation history for the given channel."""
+        if self.db_manager is not None:
+            return await self.db_manager.get_recent_history(
+                channel_id=channel_id,
+                limit_turns=self.max_turns,
+            )
+        key = (guild_id, channel_id)
+        return list(self._in_memory.get(key, []))
 
-    def get_history(self, guild_id: int | None, channel_id: int) -> list[dict[str, str]]:
-        """Returns a copy of the stored history for the given channel."""
-        key = self._get_key(guild_id, channel_id)
-        return list(self._memories.get(key, []))
-
-    def add_turn(
+    async def add_turn(
         self,
         guild_id: int | None,
         channel_id: int,
         user_content: str,
         assistant_content: str,
+        user_id: int = 0,
     ) -> None:
-        """
-        Adds a user-assistant conversation turn and caps history
-        to the maximum allowed turns.
-        """
-        key = self._get_key(guild_id, channel_id)
-        if key not in self._memories:
-            self._memories[key] = []
+        """Adds a user-assistant conversation turn to persistent storage."""
+        if self.db_manager is not None:
+            await self.db_manager.save_turn(
+                guild_id=guild_id,
+                channel_id=channel_id,
+                user_id=user_id,
+                user_content=user_content,
+                assistant_content=assistant_content,
+            )
+        else:
+            key = (guild_id, channel_id)
+            if key not in self._in_memory:
+                self._in_memory[key] = []
+            history = self._in_memory[key]
+            history.append({"role": "user", "content": user_content})
+            history.append({"role": "assistant", "content": assistant_content})
+            max_entries = self.max_turns * 2
+            if len(history) > max_entries:
+                self._in_memory[key] = history[-max_entries:]
 
-        history = self._memories[key]
-        history.append({"role": "user", "content": user_content})
-        history.append({"role": "assistant", "content": assistant_content})
+    async def clear(self, guild_id: int | None, channel_id: int) -> bool:
+        """Clears conversation history for the given channel."""
+        if self.db_manager is not None:
+            return await self.db_manager.clear_channel(channel_id)
+        key = (guild_id, channel_id)
+        return bool(self._in_memory.pop(key, None))
 
-        max_entries = self.max_turns * 2
-        if len(history) > max_entries:
-            self._memories[key] = history[-max_entries:]
+    async def forget_user(self, user_id: int) -> int:
+        """Purges all messages associated with a specific user."""
+        if self.db_manager is not None:
+            return await self.db_manager.delete_user_history(user_id)
+        return 0
 
-    def clear(self, guild_id: int | None, channel_id: int) -> bool:
-        """
-        Clears the conversation history for the given channel.
-        Returns True if history was found and cleared, False if already empty.
-        """
-        key = self._get_key(guild_id, channel_id)
-        if self._memories.get(key):
-            del self._memories[key]
-            return True
-        elif key in self._memories:
-            del self._memories[key]
-        return False
+    async def has_memory(self, guild_id: int | None, channel_id: int) -> bool:
+        """Checks whether any history exists for the channel."""
+        if self.db_manager is not None:
+            return await self.db_manager.has_channel_history(channel_id)
+        return bool(self._in_memory.get((guild_id, channel_id)))
 
-    def has_memory(self, guild_id: int | None, channel_id: int) -> bool:
-        """Checks whether any history exists for the given channel."""
-        key = self._get_key(guild_id, channel_id)
-        return bool(self._memories.get(key))
-
-    def clear_all(self) -> None:
-        """Clears memory across all channels."""
-        self._memories.clear()
+    async def wipe_all(self) -> int:
+        """Purges all conversation history across all channels and guilds."""
+        self._in_memory.clear()
+        if self.db_manager is not None:
+            return await self.db_manager.clear_all()
+        return 0

@@ -127,7 +127,7 @@ class ChatCog(commands.Cog, name="Chat"):
             else:
                 formatted_prompt = f"{message.author.display_name}: {user_prompt}"
 
-            history = self.memory_manager.get_history(guild_id, channel_id)
+            history = await self.memory_manager.get_history(guild_id, channel_id)
 
             try:
                 llm_response = await self.ollama_service.generate_response(
@@ -143,9 +143,10 @@ class ChatCog(commands.Cog, name="Chat"):
                         logger.warning("Failed to add reaction '%s'", llm_response.reaction)
 
                 # Update channel memory (Text only: zero visual tokens in KV-cache)
-                self.memory_manager.add_turn(
+                await self.memory_manager.add_turn(
                     guild_id=guild_id,
                     channel_id=channel_id,
+                    user_id=message.author.id,
                     user_content=formatted_prompt,
                     assistant_content=llm_response.content,
                 )

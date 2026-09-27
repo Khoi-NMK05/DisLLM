@@ -1,3 +1,6 @@
+import re
+
+
 class TextSplitter:
     """
     Utility class for safely splitting long text into chunks that satisfy
@@ -48,9 +51,14 @@ class TextSplitter:
     def _strip_dialogue_quotes(text: str) -> str:
         """
         Strips outer matching quotation marks or Japanese brackets often generated
-        by LLMs mimicking script or dialogue examples.
+        by LLMs mimicking script or dialogue examples, as well as character prefixes like 'B-chan:'.
         """
         s = text.strip()
+        # Remove character name prefix if LLM generates script-style output (e.g., "B-chan: ...")
+        s = re.sub(r"^(?:b-?chan|assistant|bot)\s*:\s*", "", s, flags=re.IGNORECASE).strip()
+        # Remove single-asterisk roleplay action descriptions like *blushes* while preserving **bold**
+        s = re.sub(r"(?<!\*)\*(?!\*)([^*]+)(?<!\*)\*(?!\*)", "", s).strip()
+
         if len(s) >= 2:
             quote_pairs = [('"', '"'), ("'", "'"), ('“', '”'), ('「', '」')]
             for q_open, q_close in quote_pairs:
