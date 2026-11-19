@@ -20,8 +20,8 @@ class GeneralCog(commands.Cog, name="General"):
 
     def _is_authorized(self, author_id: int) -> bool:
         """Verifies if the command invoker matches the authorized admin ID."""
-        admin_id = getattr(getattr(self.bot, "config", None), "admin_user_id", 244489698771206146)
-        return author_id == admin_id
+        admin_id = getattr(getattr(self.bot, "config", None), "admin_user_id", 0)
+        return bool(admin_id) and author_id == admin_id
 
     async def clear_memory_action(self, ctx: commands.Context) -> None:
         """Core execution logic for clearing channel conversation memory."""

@@ -184,7 +184,11 @@ class TestAIModelsTabUI(unittest.TestCase):
             self.tab.combo_provider.setCurrentIndex(self.tab.combo_provider.findData("openai"))
             self.tab.txt_api_key.setText("sk-saved-key-123")
 
-            with patch.object(self.tab.config, "save_ai_settings", wraps=self.tab.config.save_ai_settings) as mock_save:
+            # Save into the temp file, never the real .env; restore os.environ afterwards.
+            real_save = self.tab.config.save_ai_settings
+            with patch.dict(os.environ), patch.object(
+                self.tab.config, "save_ai_settings", side_effect=lambda: real_save(env_path=temp_env)
+            ) as mock_save:
                 self.tab.combo_vision_model.setEditText("moondream:latest")
                 self.tab._on_save_settings()
                 self.assertEqual(self.tab.config.temperature, 0.95)
@@ -193,6 +197,8 @@ class TestAIModelsTabUI(unittest.TestCase):
                 self.assertEqual(self.tab.config.api_key, "sk-saved-key-123")
                 self.assertEqual(self.tab.config.vision_model, "moondream:latest")
                 mock_save.assert_called_once()
+                with open(temp_env, encoding="utf-8") as f:
+                    self.assertIn("API_KEY=sk-saved-key-123", f.read())
         finally:
             if os.path.exists(temp_env):
                 os.remove(temp_env)

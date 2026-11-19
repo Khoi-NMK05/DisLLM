@@ -17,6 +17,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from bot.utils.text import TextSplitter
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_COMMANDS_PATH = "data/custom_commands.json"
@@ -113,12 +115,14 @@ class CustomCommandManager:
             try:
                 with open(self.file_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                self.commands = [CustomCommand(**item) for item in data]
+                known = CustomCommand.__dataclass_fields__
+                self.commands = [CustomCommand(**{k: v for k, v in item.items() if k in known}) for item in data]
                 return
             except Exception as err:
-                logger.warning("Failed to load custom commands from %s: %s", self.file_path, err)
+                # Move the broken file aside instead of overwriting the user's commands with defaults.
+                os.replace(self.file_path, self.file_path + ".broken")
+                logger.error("Failed to load %s (kept as .broken), using defaults: %s", self.file_path, err)
 
-        # Fallback to defaults
         self.commands = [CustomCommand(**item) for item in DEFAULT_BUILTIN_COMMANDS]
         self.save()
 
@@ -157,6 +161,18 @@ class CustomCommandManager:
         if cmd.command_type == "ai_prompt":
 
             async def ai_callback(interaction: discord.Interaction, query: str = "") -> None:
+                # Same channel rules and anti-spam limit as chat pings.
+                moderation_mgr = getattr(bot, "moderation_manager", None)
+                if moderation_mgr:
+                    if not moderation_mgr.is_channel_allowed(interaction.guild_id, interaction.channel_id):
+                        await interaction.response.send_message("I don't respond in this channel.", ephemeral=True)
+                        return
+                    if not moderation_mgr.check_rate_limit(interaction.user.id):
+                        await interaction.response.send_message(
+                            "ちょっと待って... You're talking way too fast! Give me a second! 💢", ephemeral=True
+                        )
+                        return
+
                 await interaction.response.defer(ephemeral=cmd.ephemeral)
                 try:
                     ollama_service = getattr(bot, "ollama_service", None)
@@ -170,7 +186,10 @@ class CustomCommandManager:
                         bot=bot.user.display_name if bot.user else "Bot",
                     )
                     resp = await ollama_service.generate_response([], target_prompt)
-                    await interaction.followup.send(resp.content, ephemeral=cmd.ephemeral)
+                    # Discord rejects empty messages and anything over 2000 chars.
+                    chunks = TextSplitter().split(resp.content) or ["…"]
+                    for chunk in chunks:
+                        await interaction.followup.send(chunk, ephemeral=cmd.ephemeral)
                 except Exception as err:
                     logger.error("Error executing custom AI command /%s: %s", cmd.name, err)
                     await interaction.followup.send(f"❌ Error: {err}", ephemeral=True)
@@ -220,6 +239,12 @@ class CustomCommandManager:
 
     async def register_commands_to_bot(self, bot: commands.Bot) -> int:
         """Registers all enabled custom commands into the bot's application command tree."""
+        # Drop commands registered earlier that were since deleted or disabled.
+        enabled = {cmd.name for cmd in self.commands if cmd.enabled}
+        for name in getattr(bot, "custom_command_names", set()) - enabled:
+            bot.tree.remove_command(name)
+        bot.custom_command_names = enabled
+
         count = 0
         for cmd in self.commands:
             if not cmd.enabled:

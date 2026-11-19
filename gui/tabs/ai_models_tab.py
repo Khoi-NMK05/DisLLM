@@ -541,6 +541,7 @@ class AIModelsTab(QWidget):
     def _on_save_settings(self) -> None:
         # Update config fields
         provider = self.combo_provider.currentData()
+        old_host = self.config.ollama_host
         self.config.ai_provider = provider
         self.config.api_base_url = self.txt_base_url.text().strip()
         self.config.api_key = self.txt_api_key.text().strip()
@@ -573,13 +574,12 @@ class AIModelsTab(QWidget):
         # Save to .env file
         self.config.save_ai_settings()
 
-        # Update bot instance active service if running
-        if self.main_window.runner.bot:
-            self.main_window.runner.bot.config = self.config
-            if hasattr(self.main_window.runner.bot, "ollama_service"):
-                self.main_window.runner.bot.ollama_service.config = self.config
-
-        self.lbl_status.setText("✅ AI settings saved and applied to bot runtime!")
+        # The bot shares this config object, so everything applies live except the host:
+        # the Ollama clients are built once when the bot starts.
+        if self.main_window.runner.bot and self.config.ollama_host != old_host:
+            self.lbl_status.setText("✅ AI settings saved. Restart the bot to use the new Ollama host.")
+        else:
+            self.lbl_status.setText("✅ AI settings saved and applied to bot runtime!")
         self.lbl_status.setStyleSheet("color: #23a55a;")
 
     def _on_reset_defaults(self) -> None:

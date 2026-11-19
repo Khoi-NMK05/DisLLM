@@ -248,7 +248,6 @@ class DashboardTab(QWidget):
                 await client.login(token)
                 name = client.user.name if client.user else "Unknown"
                 discrim = client.user.discriminator if client.user else "0000"
-                await client.close()
                 self.token_status_label.setText(f"✅ Success! Token valid for bot: @{name}#{discrim}")
                 self.token_status_label.setStyleSheet("color: #23a55a;")
             except discord.LoginFailure:
@@ -258,6 +257,7 @@ class DashboardTab(QWidget):
                 self.token_status_label.setText(f"❌ Connection Error: {err}")
                 self.token_status_label.setStyleSheet("color: #da373c;")
             finally:
+                await client.close()
                 self.test_token_btn.setEnabled(True)
 
         asyncio.create_task(verify())

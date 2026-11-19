@@ -175,7 +175,7 @@ The resulting executable will be created in `dist/DiscordAICompanion/DiscordAICo
   ```text
   @TsundereBot What is recursion?
   ```
-- Memory administration commands (Admin only: User ID `244489698771206146`):
+- Memory administration commands (Admin only: set your Discord user ID under **Moderation & Settings → Bot Admin**, or `ADMIN_USER_ID` in `.env`):
   - Clear channel memory:
     ```text
     /clear_memory

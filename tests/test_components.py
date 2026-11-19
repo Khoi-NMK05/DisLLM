@@ -439,6 +439,15 @@ class TestGeneralCog(unittest.IsolatedAsyncioTestCase):
         ctx.send.assert_awaited_once()
         self.assertIn("wiped clean", ctx.send.call_args[0][0])
 
+    async def test_admin_commands_denied_when_no_admin_set(self):
+        from unittest.mock import AsyncMock, MagicMock
+
+        bot_mock = MagicMock()
+        bot_mock.config.admin_user_id = 0
+        cog = GeneralCog(bot=bot_mock)
+        self.assertFalse(cog._is_authorized(0))
+        self.assertFalse(cog._is_authorized(244489698771206146))
+
     async def test_clear_memory_unauthorized(self):
         from unittest.mock import AsyncMock, MagicMock
 

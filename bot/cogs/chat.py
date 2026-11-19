@@ -12,6 +12,8 @@ from bot.utils.text import TextSplitter
 
 logger = logging.getLogger(__name__)
 
+MAX_IMAGE_BYTES = 20_000_000  # Bigger uploads are skipped rather than read into memory.
+
 
 class ChatCog(commands.Cog, name="Chat"):
     """Handles chat events, mention detection, vision perception, and AI interactions."""
@@ -93,6 +95,9 @@ class ChatCog(commands.Cog, name="Chat"):
             return None
 
         attachment = image_attachments[0]
+        if attachment.size > MAX_IMAGE_BYTES:
+            logger.warning("Skipping image '%s': %d bytes is over the limit.", attachment.filename, attachment.size)
+            return None
         try:
             logger.info("Downloading and processing image attachment '%s'...", attachment.filename)
             raw_bytes = await attachment.read()
@@ -119,7 +124,9 @@ class ChatCog(commands.Cog, name="Chat"):
         assert self.bot.user is not None
 
         # Clean prompt by stripping bot mention
-        user_prompt = message.clean_content.replace(f"@{self.bot.user.display_name}", "").strip()
+        # In a server, clean_content shows the bot's server nickname, not its global name.
+        bot_name = message.guild.me.display_name if message.guild else self.bot.user.display_name
+        user_prompt = message.clean_content.replace(f"@{bot_name}", "").strip()
 
         # Check for image attachments if user provided no text or provided both
         has_attachments = bool(message.attachments)

@@ -48,6 +48,18 @@ class TestBotConfigEnv(unittest.TestCase):
             if os.path.exists(empty_path):
                 os.remove(empty_path)
 
+    def test_from_env_bad_number_falls_back_without_losing_token(self):
+        with tempfile.NamedTemporaryFile("w+", delete=False) as f:
+            empty_path = f.name
+        try:
+            with patch.dict(os.environ, {"DISCORD_BOT_TOKEN": "tok", "TEMPERATURE": "0,8"}, clear=True):
+                cfg = BotConfig.from_env(env_path=empty_path)
+            self.assertEqual(cfg.discord_token, "tok")
+            self.assertEqual(cfg.temperature, 0.80)
+            self.assertEqual(cfg.admin_user_id, 0)
+        finally:
+            os.remove(empty_path)
+
     def test_save_token_persists_to_file(self):
         with tempfile.NamedTemporaryFile("w+", delete=False) as f:
             temp_path = f.name
@@ -61,6 +73,25 @@ class TestBotConfigEnv(unittest.TestCase):
             with open(temp_path, "r", encoding="utf-8") as f:
                 content = f.read()
             self.assertIn("DISCORD_BOT_TOKEN=test_secret_token_abc", content)
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    def test_save_ai_settings_roundtrips_prompt_and_host(self):
+        from dotenv import dotenv_values
+
+        with tempfile.NamedTemporaryFile("w+", delete=False) as f:
+            temp_path = f.name
+
+        prompt = 'line one "quoted"\nべつに, back\\slash\n\nlast'
+        try:
+            with patch.dict(os.environ, {}, clear=True):
+                cfg = BotConfig(system_prompt=prompt, ollama_host="http://10.0.0.5:11434")
+                cfg.save_ai_settings(env_path=temp_path)
+                self.assertEqual(os.environ["SYSTEM_PROMPT"], prompt)
+            values = dotenv_values(temp_path, encoding="utf-8")
+            self.assertEqual(values["SYSTEM_PROMPT"], prompt)
+            self.assertEqual(values["OLLAMA_HOST"], "http://10.0.0.5:11434")
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)

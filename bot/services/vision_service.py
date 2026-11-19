@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import base64
 import logging
-import re
 from typing import Any
 
 import ollama
 
 from bot.config import BotConfig
+from bot.services.ollama_service import OllamaService
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +33,6 @@ class VisionService:
             self.client = ollama.AsyncClient(host=config.ollama_host)
         else:
             self.client = ollama.AsyncClient()
-
-    @staticmethod
-    def clean_think_tags(text: str) -> str:
-        """Strips reasoning blocks from models that emit <think> tags."""
-        return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
     async def describe_image(
         self,
@@ -93,7 +88,7 @@ class VisionService:
             )
 
             raw_description = response.get("message", {}).get("content", "").strip()
-            cleaned_description = self.clean_think_tags(raw_description)
+            cleaned_description = OllamaService.clean_think_tags(raw_description)
             logger.debug("Vision description: %s", cleaned_description)
             return cleaned_description
 

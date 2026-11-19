@@ -42,6 +42,8 @@ class TsundereBot(commands.Bot):
         super().__init__(
             command_prefix=config.command_prefix,
             intents=intents,
+            # The model's text is user-steerable: never let it ping @everyone or roles.
+            allowed_mentions=discord.AllowedMentions(everyone=False, roles=False),
             **bot_options,
         )
 

@@ -49,7 +49,9 @@ def main() -> None:
         config = BotConfig(discord_token="")
 
     window = MainWindow(config=config)
-    window.show()
+    # Start hidden in the tray only if a tray icon exists, otherwise the window would be unreachable.
+    if not (window.settings_tab.mod_manager.settings.start_minimized and hasattr(window, "tray_icon")):
+        window.show()
 
     with loop:
         loop.run_forever()

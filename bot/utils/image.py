@@ -9,6 +9,9 @@ from PIL import Image, ImageOps
 
 logger = logging.getLogger(__name__)
 
+# Pillow raises above 2x this (100 MP); its default lets ~179 MP (~540 MB as RGB) through with a warning.
+Image.MAX_IMAGE_PIXELS = 50_000_000
+
 
 class ImageProcessingError(Exception):
     """Raised when an image cannot be processed or decoded."""
@@ -65,6 +68,9 @@ class ImageProcessor:
 
         try:
             with Image.open(io.BytesIO(raw_bytes)) as img:
+                # JPEGs decode straight at reduced scale, so big phone photos never hit full size in memory.
+                img.draft("RGB", (self.max_dimension, self.max_dimension))
+
                 # If animated (e.g. GIF), select first frame
                 if getattr(img, "is_animated", False):
                     img.seek(0)

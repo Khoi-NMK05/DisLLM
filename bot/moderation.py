@@ -43,10 +43,13 @@ class ModerationManager:
             try:
                 with open(self.file_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                self.settings = ModerationSettings(**data)
+                known = ModerationSettings.__dataclass_fields__
+                self.settings = ModerationSettings(**{k: v for k, v in data.items() if k in known})
                 return
             except Exception as err:
-                logger.warning("Failed to load moderation settings: %s", err)
+                # Move the broken file aside instead of overwriting the user's rules with defaults.
+                os.replace(self.file_path, self.file_path + ".broken")
+                logger.error("Failed to load %s (kept as .broken), using defaults: %s", self.file_path, err)
 
         self.save()
 

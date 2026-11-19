@@ -50,6 +50,18 @@ class TestCustomCommandManager(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             self.manager.add_command(invalid_cmd)
 
+    def test_broken_file_is_kept_not_overwritten(self):
+        with open(self.temp_file.name, "w", encoding="utf-8") as f:
+            f.write('[{"name": "mine", "description": "x"},')  # truncated JSON
+        manager = CustomCommandManager(file_path=self.temp_file.name)
+        broken = self.temp_file.name + ".broken"
+        try:
+            with open(broken, encoding="utf-8") as f:
+                self.assertIn('"mine"', f.read())
+            self.assertIsNotNone(manager.get_command("roast"))  # defaults loaded for this session
+        finally:
+            os.remove(broken)
+
     def test_remove_command(self):
         cmd = CustomCommand(name="remove_me", description="to be removed")
         self.manager.add_command(cmd)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 
@@ -12,6 +13,18 @@ except ImportError:
 
     def find_dotenv(*args, **kwargs) -> str:  # type: ignore
         return ""
+
+def _env_num(name: str, default, cast):
+    """Reads one number from the environment; a bad value falls back to its default instead of failing the whole load."""
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return cast(raw)
+    except ValueError:
+        logging.getLogger(__name__).warning("Ignoring invalid %s=%r in .env, using %r.", name, raw, default)
+        return default
+
 
 DEFAULT_SYSTEM_PROMPT = """You acknowledge yourself as a young Japanese woman chatting casually with another user on Discord.
 Your name is B-chan. You're a smart and especially multilingual. Whenever someone asks you about talking to a different language, you give them one sentence before switching back to your personality.
@@ -194,7 +207,7 @@ class BotConfig:
     num_ctx: int = 8192
     system_prompt: str = DEFAULT_SYSTEM_PROMPT
     presence_text: str = "@ me to chat!"
-    admin_user_id: int = 244489698771206146
+    admin_user_id: int = 0  # 0 = nobody can run admin commands
     db_path: str = "data/chatbot.db"
     separate_messages: bool = True
     message_delay: float = 0.4
@@ -231,26 +244,26 @@ class BotConfig:
             api_base_url=os.getenv("API_BASE_URL", "").strip(),
             api_model=os.getenv("API_MODEL", "").strip(),
             ollama_model=os.getenv("OLLAMA_MODEL", "qwen3.5:9b"),
-            ollama_host=os.getenv("OLLAMA_HOST"),
+            ollama_host=os.getenv("OLLAMA_HOST") or None,
             keep_alive=os.getenv("OLLAMA_KEEP_ALIVE", "24h"),
             command_prefix=os.getenv("BOT_COMMAND_PREFIX", "!"),
-            max_history_turns=int(os.getenv("MAX_HISTORY_TURNS", "15")),
-            temperature=float(os.getenv("TEMPERATURE", "0.80")),
-            top_p=float(os.getenv("TOP_P", "0.90")),
-            min_p=float(os.getenv("MIN_P", "0.07")),
-            repeat_penalty=float(os.getenv("REPEAT_PENALTY", "1.08")),
-            num_predict=int(os.getenv("NUM_PREDICT", "512")),
-            num_ctx=int(os.getenv("NUM_CTX", "8192")),
+            max_history_turns=_env_num("MAX_HISTORY_TURNS", 15, int),
+            temperature=_env_num("TEMPERATURE", 0.80, float),
+            top_p=_env_num("TOP_P", 0.90, float),
+            min_p=_env_num("MIN_P", 0.07, float),
+            repeat_penalty=_env_num("REPEAT_PENALTY", 1.08, float),
+            num_predict=_env_num("NUM_PREDICT", 512, int),
+            num_ctx=_env_num("NUM_CTX", 8192, int),
             system_prompt=os.getenv("SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT),
             presence_text=os.getenv("PRESENCE_TEXT", "@ me to chat!"),
-            admin_user_id=int(os.getenv("ADMIN_USER_ID", "244489698771206146")),
+            admin_user_id=_env_num("ADMIN_USER_ID", 0, int),
             db_path=os.getenv("DB_PATH", "data/chatbot.db"),
             separate_messages=os.getenv("SEPARATE_MESSAGES", "true").strip().lower() in ("true", "1", "yes"),
-            message_delay=float(os.getenv("MESSAGE_DELAY", "0.4")),
+            message_delay=_env_num("MESSAGE_DELAY", 0.4, float),
             vision_enabled=os.getenv("VISION_ENABLED", "true").strip().lower() in ("true", "1", "yes"),
             vision_model=os.getenv("VISION_MODEL", "qwen2.5vl:7b-instruct-q4_K_M"),
-            vision_max_dimension=int(os.getenv("VISION_MAX_DIMENSION", "1536")),
-            vision_num_predict=int(os.getenv("VISION_NUM_PREDICT", "1024")),
+            vision_max_dimension=_env_num("VISION_MAX_DIMENSION", 1536, int),
+            vision_num_predict=_env_num("VISION_NUM_PREDICT", 1024, int),
             vision_prompt=os.getenv(
                 "VISION_PROMPT",
                 "Analyze and describe this image in detail. If there is visible text, handwriting, signs, "
@@ -299,6 +312,12 @@ class BotConfig:
         os.environ["DISCORD_BOT_TOKEN"] = token
         self._update_env_file({"DISCORD_BOT_TOKEN": token}, env_path=env_path)
 
+    def save_admin_id(self, user_id: int, env_path: str = ".env") -> None:
+        """Sets who may run admin commands (0 = nobody) and persists it to .env."""
+        self.admin_user_id = user_id
+        os.environ["ADMIN_USER_ID"] = str(user_id)
+        self._update_env_file({"ADMIN_USER_ID": str(user_id)}, env_path=env_path)
+
     def save_ai_settings(self, env_path: str = ".env") -> None:
         """Persists AI inference parameters to the local .env file."""
         updates = {
@@ -307,6 +326,7 @@ class BotConfig:
             "API_BASE_URL": self.api_base_url,
             "API_MODEL": self.api_model,
             "OLLAMA_MODEL": self.ollama_model,
+            "OLLAMA_HOST": self.ollama_host or "",
             "OLLAMA_KEEP_ALIVE": self.keep_alive,
             "TEMPERATURE": str(self.temperature),
             "TOP_P": str(self.top_p),
@@ -319,9 +339,13 @@ class BotConfig:
             "VISION_MAX_DIMENSION": str(self.vision_max_dimension),
             "VISION_NUM_PREDICT": str(self.vision_num_predict),
         }
+        updates["SYSTEM_PROMPT"] = self.system_prompt
         for k, v in updates.items():
             os.environ[k] = v
 
+        # The prompt is multi-line; write it as one double-quoted line that python-dotenv unescapes on load.
+        escaped = self.system_prompt.replace("\\", "\\\\").replace('"', '\\"').replace("\r", "\\r").replace("\n", "\\n")
+        updates["SYSTEM_PROMPT"] = f'"{escaped}"'
         self._update_env_file(updates, env_path=env_path)
 
 

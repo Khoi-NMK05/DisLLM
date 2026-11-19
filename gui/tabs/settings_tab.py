@@ -143,6 +143,14 @@ class SettingsTab(QWidget):
         rate_row.addWidget(self.spin_rate_limit, stretch=1)
         layout.addLayout(rate_row)
 
+        # Bot admin: the one Discord user allowed to run /clear_memory, /forget_me, /wipe_database
+        admin_row = QHBoxLayout()
+        admin_row.addWidget(QLabel("Bot Admin User ID:"))
+        self.txt_admin_id = QLineEdit()
+        self.txt_admin_id.setPlaceholderText("Discord Developer Mode > right-click yourself > Copy User ID")
+        admin_row.addWidget(self.txt_admin_id, stretch=1)
+        layout.addLayout(admin_row)
+
         return group
 
     def _create_app_preferences_card(self) -> QGroupBox:
@@ -249,6 +257,8 @@ class SettingsTab(QWidget):
         self.spin_rate_limit.setValue(s.rate_limit_per_minute)
         self.chk_minimize_to_tray.setChecked(s.minimize_to_tray_on_close)
         self.chk_start_minimized.setChecked(s.start_minimized)
+        admin_id = self.main_window.config.admin_user_id
+        self.txt_admin_id.setText(str(admin_id) if admin_id else "")
 
     def _on_rule_mode_changed(self) -> None:
         mode = self.combo_rule_mode.currentData()
@@ -315,6 +325,16 @@ class SettingsTab(QWidget):
                 self.mod_manager.settings.blacklisted_channels.remove(channel_id)
 
     def _on_save_preferences(self) -> None:
+        admin_text = self.txt_admin_id.text().strip()
+        if admin_text and not admin_text.isdigit():
+            self.lbl_pref_status.setText("⚠️ Bot Admin User ID must be digits only (or empty for no admin).")
+            self.lbl_pref_status.setStyleSheet("color: #f0b232;")
+            return
+        admin_id = int(admin_text or 0)
+        if admin_id != self.main_window.config.admin_user_id:
+            # The bot shares this config object, so the new admin applies immediately.
+            self.main_window.config.save_admin_id(admin_id)
+
         self.mod_manager.settings.allow_dms = self.chk_allow_dms.isChecked()
         self.mod_manager.settings.channel_rule_mode = self.combo_rule_mode.currentData()
         self.mod_manager.settings.rate_limit_per_minute = self.spin_rate_limit.value()
@@ -341,7 +361,11 @@ class SettingsTab(QWidget):
             return
 
         async def fetch() -> None:
-            channels = await self.db_manager.list_active_channels()
+            try:
+                channels = await self.db_manager.list_active_channels()
+            except Exception as err:
+                self._show_memory_error(err)
+                return
             self.table_channels.setRowCount(len(channels))
             for row, c in enumerate(channels):
                 ch_id = str(c["channel_id"])
@@ -374,7 +398,11 @@ class SettingsTab(QWidget):
         self.selected_memory_channel_id = channel_id
 
         async def load_details() -> None:
-            turns = await self.db_manager.get_detailed_channel_history(channel_id, limit=40)
+            try:
+                turns = await self.db_manager.get_detailed_channel_history(channel_id, limit=40)
+            except Exception as err:
+                self._show_memory_error(err)
+                return
             self.table_messages.setRowCount(len(turns))
             for r, t in enumerate(turns):
                 role = t["role"].upper()
@@ -397,6 +425,11 @@ class SettingsTab(QWidget):
 
         asyncio.create_task(load_details())
 
+    def _show_memory_error(self, err: Exception) -> None:
+        logger.error("Memory inspector action failed: %s", err)
+        self.lbl_memory_status.setText(f"❌ Database error: {err}")
+        self.lbl_memory_status.setStyleSheet("color: #da373c;")
+
     def _on_clear_channel_memory(self) -> None:
         if not self.selected_memory_channel_id:
             self.lbl_memory_status.setText("⚠️ Select a channel session from the table first.")
@@ -413,7 +446,11 @@ class SettingsTab(QWidget):
         )
         if reply == QMessageBox.StandardButton.Yes:
             async def clear() -> None:
-                cleared = await self.db_manager.clear_channel(channel_id)
+                try:
+                    await self.db_manager.clear_channel(channel_id)
+                except Exception as err:
+                    self._show_memory_error(err)
+                    return
                 self._refresh_active_memory_channels()
                 self.table_messages.setRowCount(0)
                 self.selected_memory_channel_id = None
@@ -432,7 +469,11 @@ class SettingsTab(QWidget):
         )
         if reply == QMessageBox.StandardButton.Yes:
             async def wipe() -> None:
-                deleted = await self.db_manager.clear_all()
+                try:
+                    deleted = await self.db_manager.clear_all()
+                except Exception as err:
+                    self._show_memory_error(err)
+                    return
                 self._refresh_active_memory_channels()
                 self.table_messages.setRowCount(0)
                 self.selected_memory_channel_id = None

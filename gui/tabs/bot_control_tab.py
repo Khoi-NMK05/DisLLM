@@ -7,8 +7,10 @@ and the ability to send messages/replies through the bot into any accessible Dis
 from __future__ import annotations
 
 import asyncio
+import html
 import logging
 import os
+from urllib.parse import quote
 from typing import TYPE_CHECKING
 
 import discord
@@ -407,6 +409,7 @@ class BotControlTab(QWidget):
         banner_layout.setSpacing(6)
 
         self.lbl_reply_info = QLabel("")
+        self.lbl_reply_info.setTextFormat(Qt.TextFormat.PlainText)  # shows a Discord name; never render it as HTML
         self.lbl_reply_info.setStyleSheet("color: #5865f2; font-weight: bold; font-size: 12px;")
         banner_layout.addWidget(self.lbl_reply_info, stretch=1)
 
@@ -537,23 +540,20 @@ class BotControlTab(QWidget):
         time_str = msg.created_at.strftime("%H:%M:%S")
 
         # Sanitize HTML in content
-        safe_content = (
-            msg.clean_content.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace("\n", "<br>")
-        )
+        safe_content = html.escape(msg.clean_content, quote=False).replace("\n", "<br>")
 
         attachment_str = ""
         if msg.attachments:
-            att_names = [a.filename for a in msg.attachments]
+            att_names = [html.escape(a.filename) for a in msg.attachments]
             attachment_str = f"<br><span style='color: #f0b232; font-size: 11px;'>📎 [{', '.join(att_names)}]</span>"
 
         reply_str = ""
         if msg.reference and msg.reference.message_id:
             reply_str = f" <span style='color: #949ba4; font-size: 11px;'>(reply to {msg.reference.message_id})</span>"
 
-        clean_author = msg.author.display_name.replace("'", "").replace('"', "")
+        # Names and file names come from Discord users: escape them so they can't inject links or markup.
+        author_html = html.escape(msg.author.display_name)
+        clean_author = quote(msg.author.display_name, safe="")
         author_id = msg.author.id
         msg_id = msg.id
 
@@ -561,8 +561,8 @@ class BotControlTab(QWidget):
             f"<div style='margin-bottom: 8px; padding: 4px 6px; border-radius: 6px; background-color: #16171a;'>"
             f"<span style='color: #949ba4; font-size: 11px;'>[{time_str}]</span> "
             f"<a href='action://mention?id={author_id}&name={clean_author}' "
-            f"title='Click to mention @{clean_author}' "
-            f"style='color: {author_color}; font-weight: bold; text-decoration: none;'>{msg.author.display_name}</a>{reply_str}: "
+            f"title='Click to mention @{author_html}' "
+            f"style='color: {author_color}; font-weight: bold; text-decoration: none;'>{author_html}</a>{reply_str}: "
             f"<span style='color: #dbdee1;'>{safe_content}</span>"
             f"{attachment_str} "
             f"<span style='margin-left: 10px;'>"
@@ -570,7 +570,7 @@ class BotControlTab(QWidget):
             f"title='Click to reply to this message' "
             f"style='color: #5865f2; text-decoration: none; font-size: 11px; background-color: #2b2d31; padding: 2px 6px; border-radius: 4px; font-weight: bold;'>↩ Reply</a> "
             f"<a href='action://mention?id={author_id}&name={clean_author}' "
-            f"title='Click to mention @{clean_author}' "
+            f"title='Click to mention @{author_html}' "
             f"style='color: #23a55a; text-decoration: none; font-size: 11px; background-color: #2b2d31; padding: 2px 6px; border-radius: 4px; font-weight: bold;'>@ Mention</a>"
             f"</span>"
             f" <span style='color: #4e5058; font-size: 10px;'>ID: {msg_id}</span>"
@@ -585,11 +585,11 @@ class BotControlTab(QWidget):
             query = QUrlQuery(url.query())
             if action_type == "reply":
                 msg_id = query.queryItemValue("id")
-                author = query.queryItemValue("author")
+                author = query.queryItemValue("author", QUrl.ComponentFormattingOption.FullyDecoded)
                 self._set_reply_target(msg_id, author)
             elif action_type == "mention":
                 user_id = query.queryItemValue("id")
-                author_name = query.queryItemValue("name")
+                author_name = query.queryItemValue("name", QUrl.ComponentFormattingOption.FullyDecoded)
                 self._insert_mention(user_id, author_name)
         elif scheme in ("http", "https"):
             QDesktopServices.openUrl(url)

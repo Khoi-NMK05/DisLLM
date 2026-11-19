@@ -105,11 +105,24 @@ class TestSettingsTabUI(unittest.TestCase):
         self.window.close()
 
     def test_ui_preferences_save(self):
+        # Save into temp files, never the real data/moderation_settings.json or .env.
+        tmp_dir = tempfile.mkdtemp()
+        self.tab.mod_manager.file_path = os.path.join(tmp_dir, "moderation.json")
+        self.tab.txt_admin_id.setText("123456789")
         self.tab.chk_allow_dms.setChecked(False)
         self.tab.spin_rate_limit.setValue(15)
         self.tab.chk_minimize_to_tray.setChecked(True)
 
-        self.tab._on_save_preferences()
+        real_save_admin = self.config.save_admin_id
+        env_path = os.path.join(tmp_dir, ".env")
+        with patch.dict(os.environ), patch.object(
+            self.config, "save_admin_id", side_effect=lambda uid: real_save_admin(uid, env_path=env_path)
+        ):
+            self.tab._on_save_preferences()
+
+        self.assertEqual(self.config.admin_user_id, 123456789)
+        with open(env_path, encoding="utf-8") as f:
+            self.assertIn("ADMIN_USER_ID=123456789", f.read())
 
         self.assertFalse(self.tab.mod_manager.settings.allow_dms)
         self.assertEqual(self.tab.mod_manager.settings.rate_limit_per_minute, 15)
