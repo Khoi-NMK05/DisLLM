@@ -4,12 +4,17 @@ import discord
 from discord.ext import commands
 
 from bot.config import BotConfig
+from bot.custom_commands import CustomCommandManager
 from bot.database import DatabaseManager
 from bot.memory import MemoryManager
+from bot.moderation import ModerationManager
+from bot.plugins import PluginManager
 from bot.services.ollama_service import OllamaService
 from bot.services.vision_service import VisionService
 from bot.utils.image import ImageProcessor
 from bot.utils.text import TextSplitter
+import bot.cogs.chat  # Explicit import ensures PyInstaller bundles cog modules
+import bot.cogs.commands  # Explicit import ensures PyInstaller bundles cog modules
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +54,9 @@ class TsundereBot(commands.Bot):
         self.vision_service = vision_service or VisionService(config=config)
         self.image_processor = image_processor or ImageProcessor(max_dimension=config.vision_max_dimension)
         self.text_splitter = text_splitter or TextSplitter(default_limit=1950)
+        self.custom_cmd_manager = CustomCommandManager()
+        self.plugin_manager = PluginManager()
+        self.moderation_manager = ModerationManager()
 
     async def setup_hook(self) -> None:
         """Asynchronous initialization hook called before the bot connects to Discord gateway."""
@@ -58,7 +66,13 @@ class TsundereBot(commands.Bot):
         logger.info("Loading extensions/cogs...")
         await self.load_extension("bot.cogs.commands")
         await self.load_extension("bot.cogs.chat")
-        logger.info("Extensions loaded successfully.")
+
+        # Load external plugins from plugins/ directory
+        await self.plugin_manager.load_all_plugins(self)
+
+        # Register custom user-defined commands
+        await self.custom_cmd_manager.register_commands_to_bot(self)
+        logger.info("Extensions and custom commands loaded successfully.")
 
         try:
             logger.info("Syncing application command tree...")

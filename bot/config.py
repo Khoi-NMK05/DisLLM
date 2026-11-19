@@ -176,7 +176,11 @@ ANTI-PARODY RULE: Under no circumstances should you turn the character into an e
 class BotConfig:
     """Configuration settings for the Discord Bot and Ollama service."""
 
-    discord_token: str
+    discord_token: str = ""
+    ai_provider: str = "ollama"  # "ollama", "lm_studio", "openrouter", "openai", "groq", "gemini", "custom"
+    api_key: str = ""
+    api_base_url: str = ""
+    api_model: str = ""
     ollama_model: str = "qwen3.5:9b"
     ollama_host: str | None = None
     keep_alive: str = "24h"
@@ -205,7 +209,7 @@ class BotConfig:
     )
 
     @classmethod
-    def from_env(cls, env_path: str | None = None) -> BotConfig:
+    def from_env(cls, env_path: str | None = None, require_token: bool = True) -> BotConfig:
         """Load configuration from environment variables / .env file."""
         if env_path:
             load_dotenv(dotenv_path=env_path)
@@ -216,12 +220,16 @@ class BotConfig:
             else:
                 load_dotenv()
 
-        token = os.getenv("DISCORD_BOT_TOKEN")
-        if not token:
+        token = os.getenv("DISCORD_BOT_TOKEN", "").strip()
+        if not token and require_token:
             raise ValueError("Missing DISCORD_BOT_TOKEN in environment or .env file.")
 
         return cls(
             discord_token=token,
+            ai_provider=os.getenv("AI_PROVIDER", "ollama").strip().lower(),
+            api_key=os.getenv("API_KEY", "").strip(),
+            api_base_url=os.getenv("API_BASE_URL", "").strip(),
+            api_model=os.getenv("API_MODEL", "").strip(),
             ollama_model=os.getenv("OLLAMA_MODEL", "qwen3.5:9b"),
             ollama_host=os.getenv("OLLAMA_HOST"),
             keep_alive=os.getenv("OLLAMA_KEEP_ALIVE", "24h"),
@@ -250,4 +258,71 @@ class BotConfig:
                 "Identify subjects, objects, and key visual details clearly.",
             ),
         )
+
+    def _update_env_file(self, updates: dict[str, str], env_path: str = ".env") -> None:
+        """Utility to safely update or append multiple key-value pairs in the .env file."""
+        lines: list[str] = []
+        if os.path.exists(env_path):
+            with open(env_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+
+        remaining_keys = set(updates.keys())
+        new_lines: list[str] = []
+
+        for line in lines:
+            stripped = line.strip()
+            matched_key = None
+            for key in remaining_keys:
+                if stripped.startswith(f"{key}=") or stripped == key:
+                    matched_key = key
+                    break
+
+            if matched_key:
+                val = updates[matched_key]
+                new_lines.append(f"{matched_key}={val}\n")
+                remaining_keys.remove(matched_key)
+            else:
+                new_lines.append(line)
+
+        # Append any new keys that weren't present in existing .env
+        for key in remaining_keys:
+            if new_lines and not new_lines[-1].endswith("\n"):
+                new_lines.append("\n")
+            new_lines.append(f"{key}={updates[key]}\n")
+
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.writelines(new_lines)
+
+    def save_token(self, token: str, env_path: str = ".env") -> None:
+        """Persists the updated token to self and the local .env file."""
+        self.discord_token = token
+        os.environ["DISCORD_BOT_TOKEN"] = token
+        self._update_env_file({"DISCORD_BOT_TOKEN": token}, env_path=env_path)
+
+    def save_ai_settings(self, env_path: str = ".env") -> None:
+        """Persists AI inference parameters to the local .env file."""
+        updates = {
+            "AI_PROVIDER": self.ai_provider,
+            "API_KEY": self.api_key,
+            "API_BASE_URL": self.api_base_url,
+            "API_MODEL": self.api_model,
+            "OLLAMA_MODEL": self.ollama_model,
+            "OLLAMA_KEEP_ALIVE": self.keep_alive,
+            "TEMPERATURE": str(self.temperature),
+            "TOP_P": str(self.top_p),
+            "MIN_P": str(self.min_p),
+            "REPEAT_PENALTY": str(self.repeat_penalty),
+            "NUM_PREDICT": str(self.num_predict),
+            "NUM_CTX": str(self.num_ctx),
+            "VISION_ENABLED": "true" if self.vision_enabled else "false",
+            "VISION_MODEL": self.vision_model,
+            "VISION_MAX_DIMENSION": str(self.vision_max_dimension),
+            "VISION_NUM_PREDICT": str(self.vision_num_predict),
+        }
+        for k, v in updates.items():
+            os.environ[k] = v
+
+        self._update_env_file(updates, env_path=env_path)
+
+
 

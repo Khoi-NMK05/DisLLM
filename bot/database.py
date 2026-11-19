@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import logging
 import os
+from typing import Any
 
 import aiosqlite
 
@@ -159,6 +162,57 @@ class DatabaseManager:
         await conn.commit()
         await conn.execute("VACUUM")
         return deleted_count
+
+    async def list_active_channels(self) -> list[dict[str, Any]]:
+        """Lists all channels that have stored conversation history with message counts."""
+        conn = await self._get_conn()
+        async with conn.execute(
+            """
+            SELECT channel_id, guild_id, COUNT(*) as msg_count, MAX(timestamp) as last_active
+            FROM messages
+            GROUP BY channel_id
+            ORDER BY last_active DESC
+            """
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [
+                {
+                    "channel_id": row["channel_id"],
+                    "guild_id": row["guild_id"],
+                    "msg_count": row["msg_count"],
+                    "last_active": row["last_active"],
+                }
+                for row in rows
+            ]
+
+    async def get_detailed_channel_history(
+        self, channel_id: int, limit: int = 50
+    ) -> list[dict[str, Any]]:
+        """Retrieves detailed message records for inspection in the GUI."""
+        conn = await self._get_conn()
+        async with conn.execute(
+            """
+            SELECT id, guild_id, channel_id, user_id, role, content, timestamp
+            FROM messages
+            WHERE channel_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (channel_id, limit),
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [
+                {
+                    "id": row["id"],
+                    "guild_id": row["guild_id"],
+                    "channel_id": row["channel_id"],
+                    "user_id": row["user_id"],
+                    "role": row["role"],
+                    "content": row["content"],
+                    "timestamp": row["timestamp"],
+                }
+                for row in reversed(rows)
+            ]
 
     async def close(self) -> None:
         """Closes the active database connection."""

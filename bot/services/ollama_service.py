@@ -1,10 +1,15 @@
+import logging
 import re
 from dataclasses import dataclass
 from typing import Any
 
+import aiohttp
 import ollama
 
 from bot.config import BotConfig
+from bot.services.ai_helpers import PROVIDER_PRESETS
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -18,8 +23,8 @@ class LLMResponse:
 
 class OllamaService:
     """
-    Encapsulates interaction with the Ollama local LLM, including prompt construction,
-    inference execution, <think> block removal, and reaction parsing.
+    Unified AI service supporting both local models (Ollama, LM Studio, llama.cpp)
+    and cloud APIs (OpenRouter, OpenAI, Groq, Gemini) via an abstracted router.
     """
 
     def __init__(self, config: BotConfig, client: ollama.AsyncClient | None = None) -> None:
@@ -58,7 +63,7 @@ class OllamaService:
         history: list[dict[str, str]],
         formatted_user_prompt: str,
     ) -> list[dict[str, str]]:
-        """Constructs the structured messages list for Ollama chat API."""
+        """Constructs the structured messages list for chat completions API."""
         payload: list[dict[str, str]] = [{"role": "system", "content": self.config.system_prompt}]
         payload.extend(history)
         payload.append({"role": "user", "content": formatted_user_prompt})
@@ -70,8 +75,20 @@ class OllamaService:
         formatted_user_prompt: str,
     ) -> LLMResponse:
         """
-        Calls Ollama asynchronously and extracts cleaned content and reaction emoji.
+        Routes the prompt to the selected local or cloud provider and returns cleaned reply and reaction.
         """
+        provider = getattr(self.config, "ai_provider", "ollama").lower()
+
+        if provider == "ollama":
+            return await self._generate_ollama_response(history, formatted_user_prompt)
+        else:
+            return await self._generate_openai_compatible_response(history, formatted_user_prompt)
+
+    async def _generate_ollama_response(
+        self,
+        history: list[dict[str, str]],
+        formatted_user_prompt: str,
+    ) -> LLMResponse:
         messages_payload = self.build_messages_payload(history, formatted_user_prompt)
 
         response = await self.client.chat(
@@ -94,3 +111,51 @@ class OllamaService:
         reaction, final_reply = self.extract_reaction(cleaned_content)
 
         return LLMResponse(content=final_reply, reaction=reaction, raw=response)
+
+    async def _generate_openai_compatible_response(
+        self,
+        history: list[dict[str, str]],
+        formatted_user_prompt: str,
+    ) -> LLMResponse:
+        messages_payload = self.build_messages_payload(history, formatted_user_prompt)
+
+        provider_key = self.config.ai_provider.lower()
+        preset = PROVIDER_PRESETS.get(provider_key, {})
+        base_url = self.config.api_base_url or preset.get("default_url", "http://localhost:1234/v1")
+        model = self.config.api_model or preset.get("default_model", self.config.ollama_model)
+
+        endpoint = f"{base_url.rstrip('/')}/chat/completions"
+
+        headers: dict[str, str] = {"Content-Type": "application/json"}
+        if self.config.api_key:
+            headers["Authorization"] = f"Bearer {self.config.api_key}"
+        if provider_key == "openrouter":
+            headers["HTTP-Referer"] = "https://github.com/DiscordChatBotxOllama"
+            headers["X-Title"] = "Discord AI Companion"
+
+        payload: dict[str, Any] = {
+            "model": model,
+            "messages": messages_payload,
+            "temperature": self.config.temperature,
+            "top_p": self.config.top_p,
+            "max_tokens": self.config.num_predict,
+        }
+
+        timeout = aiohttp.ClientTimeout(total=90)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(endpoint, json=payload, headers=headers) as resp:
+                if resp.status != 200:
+                    err_msg = await resp.text()
+                    raise RuntimeError(f"Cloud/API inference failed ({resp.status}): {err_msg}")
+
+                data = await resp.json()
+                choices = data.get("choices", [])
+                if not choices:
+                    raise RuntimeError("No completions returned by API.")
+
+                raw_content = choices[0].get("message", {}).get("content", "").strip()
+                cleaned_content = self.clean_think_tags(raw_content)
+                reaction, final_reply = self.extract_reaction(cleaned_content)
+
+                return LLMResponse(content=final_reply, reaction=reaction, raw=data)
+

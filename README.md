@@ -136,14 +136,38 @@ VISION_NUM_PREDICT=1024
 
 ## 💬 Usage
 
-### Run the Bot
-
-Start the bot using the main entry point:
+### 1. Launch Desktop GUI Application (Default)
+Start the modern desktop interface:
 ```bash
+python app.py
+# Or:
 python main.py
 ```
 
-*(Or use the legacy command: `python DcChatbot.py`)*
+### 2. Headless CLI Mode (Optional)
+Run in pure terminal / headless server mode without GUI:
+```bash
+python main.py --cli
+```
+
+### 3. Build Standalone Windows Executable (.exe)
+Package the entire application into a standalone Windows `.exe` using PyInstaller:
+```bash
+python build_exe.py
+```
+The resulting executable will be created in `dist/DiscordAICompanion/DiscordAICompanion.exe`.
+
+---
+
+## 🖥️ Desktop Interface (5-Tab Architecture)
+
+1. **📊 Dashboard**: Manage Discord bot token, one-click connection test, Start/Stop/Restart bot controls, latency diagnostics, and real-time log streaming with level filters.
+2. **🎭 Bot & Multi-Server**: Change bot avatar, update presence and custom activity statuses, navigate across multiple servers, view live channel message history, and speak directly as the bot.
+3. **🧠 AI Engine & Models**: Switch between Local models (Ollama, LM Studio, direct Hugging Face `.gguf` loader) and Cloud APIs (OpenRouter, Gemini, OpenAI, Groq), with dynamic hyperparameter sliders and persona presets.
+4. **⚡ Commands & Personas**: Build No-Code custom slash commands (`/roast`, `/translate`, `/rules`), and manage hot-reloadable Python Cog plugins in `plugins/`.
+5. **🛡️ Moderation & Settings**: Configure channel whitelists/blacklists, DM privacy rules, per-user rate limits, SQLite conversation memory explorer/purger, and Windows System Tray background minimization.
+
+---
 
 ### Chatting with the Bot
 

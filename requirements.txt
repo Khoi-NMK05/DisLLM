@@ -3,4 +3,8 @@ ollama>=0.1.0
 python-dotenv>=1.0.0
 Pillow>=10.0.0
 aiosqlite>=0.20.0
+PySide6>=6.6.0
+qasync>=0.27.0
+pyinstaller>=6.0.0
+
 

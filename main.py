@@ -14,21 +14,27 @@ def setup_logging() -> None:
 
 
 def main() -> None:
-    """Main application entrypoint."""
-    setup_logging()
-    logger = logging.getLogger("main")
+    """Main application entrypoint. Supports both GUI desktop app (default) and CLI headless mode."""
+    if "--cli" in sys.argv or "--headless" in sys.argv:
+        setup_logging()
+        logger = logging.getLogger("main")
 
-    try:
-        config = BotConfig.from_env()
-    except ValueError as e:
-        logger.error("Configuration Error: %s", e)
-        sys.exit(1)
+        try:
+            config = BotConfig.from_env()
+        except ValueError as e:
+            logger.error("Configuration Error: %s", e)
+            sys.exit(1)
 
-    logger.info("Initializing TsundereBot...")
-    bot = TsundereBot(config=config)
+        logger.info("Initializing TsundereBot in CLI mode...")
+        bot = TsundereBot(config=config)
 
-    logger.info("Starting bot...")
-    bot.run_bot()
+        logger.info("Starting bot...")
+        bot.run_bot()
+    else:
+        # Launch modern PySide6 desktop GUI
+        from app import main as launch_gui
+        launch_gui()
+
 
 
 if __name__ == "__main__":

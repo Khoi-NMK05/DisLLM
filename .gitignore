@@ -131,14 +131,31 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
+# Environments & Secrets
 .env
+.env.*
+*.env
+!.env.example
 .venv
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Local AI Models & Weights (GGUF, Safetensors, Binaries)
+*.gguf
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+*.ckpt
+models/
+weights/
+
+# Local Analysis & Reports
+graphify-out/
 
 # Spyder project settings
 .spyderproject

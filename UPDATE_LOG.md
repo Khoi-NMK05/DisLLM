@@ -4,6 +4,84 @@ All notable changes, file modifications, and new feature implementations for **D
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [v2.0] - Desktop Executable Application, Multi-Server Control, Dual AI & Full Studio
+
+### 🌟 Added
+- **Interactive Mentions & Replies in Remote Chat (`gui/tabs/bot_control_tab.py`)**:
+  - Added clickable `[↩ Reply]` and `[@ Mention]` action buttons and clickable author names inside the live message feed.
+  - Implemented reply preview banner with one-click cancel (`[✕]`) and automatic input focus.
+  - Added `feed_browser.setOpenLinks(False)` to prevent `QTextBrowser` from internally navigating away or clearing the chat history when clicking message links.
+- **Server Moderation & Privacy Rules (`bot/moderation.py`)**:
+  - Implemented `ModerationManager` managing DM privacy, channel whitelist/blacklist modes, and per-user sliding window rate limiting.
+  - Hooked privacy checks directly into `bot/cogs/chat.py` with custom tsundere cooldown responses.
+  - Persists moderation settings to `data/moderation_settings.json`.
+- **SQLite Memory Inspector & Purge Engine (`bot/database.py`, `gui/tabs/settings_tab.py`)**:
+  - Added `list_active_channels()` and `get_detailed_channel_history()` in `DatabaseManager`.
+  - Built interactive visual table of all active conversation sessions, message turn counts, and timestamps.
+  - One-click channel memory clearing and full database wipe/vacuum with confirmation prompts.
+- **Windows System Tray & Background Minimization (`gui/main_window.py`)**:
+  - Integrated `QSystemTrayIcon` with programmatic blurple icon and custom context menu (*Show Window*, *Dashboard*, *Exit*).
+  - Configurable "Minimize to Tray on Close" allowing continuous 24/7 background operation.
+- **Standalone Windows Executable Builder (`build_exe.py`)**:
+  - Automated PyInstaller packaging script bundling dependencies, plugins, and Qt assets into `dist/DiscordAICompanion/DiscordAICompanion.exe`.
+- **No-Code Custom Slash Command Engine (`bot/custom_commands.py`)**:
+  - Implemented `CustomCommandManager` and `CustomCommand` supporting three command architectures:
+    1. **AI Prompt Shortcuts**: Define dynamic prompts with parameter injection (`{query}`, `{user}`, `{bot}`) routing directly to the AI engine.
+    2. **Rich Embed Cards**: Build customizable embed cards with titles, color pickers, and formatted content.
+    3. **Static Auto-Responders**: Canned fast responses with optional query interpolation.
+  - Built-in default command templates: `/roast`, `/translate`, `/summarize`, and `/rules`.
+  - Automatic persistence to `data/custom_commands.json` and dynamic registration to `bot.tree`.
+- **Modular Python Cog Plugin System (`bot/plugins.py`)**:
+  - Automatically manages the `plugins/` directory, discovering custom `.py` Discord cogs.
+  - Generates `plugins/example_plugin.py` to give users an immediate starting template.
+  - Enables loading, unloading, and live-reloading plugins on Discord without restarting the application.
+- **Custom Commands & Plugin Studio Tab (Phase 4) (`gui/tabs/commands_tab.py`)**:
+  - **Slash Command Studio**: Visual form for creating and editing slash commands, testing validation rules (1-32 lowercase regex), setting ephemeral visibility, and one-click "Sync to Discord Gateway".
+  - **Plugin Manager Table**: Lists all installed cogs with docstrings, loaded status pills, "Load/Unload" toggles, "🔄 Live Reload" buttons, and a shortcut to open the plugins folder.
+- **Dual-Engine AI Inference Router (`bot/services/ollama_service.py`, `bot/services/ai_helpers.py`)**:
+  - Abstracted LLM execution to support both **Local Providers** (`ollama`, `lm_studio`, `llama.cpp`) and **Cloud API Providers** (`openrouter`, `openai`, `gemini`, `groq`, `custom`).
+  - Added REST chat completions adapter with support for `<think>` tag stripping and `[REACTION: emoji]` parsing across all cloud/local backends.
+  - Added `fetch_ollama_tags()` to auto-discover local installed models.
+  - Added `pull_ollama_model()` to stream model downloads from Ollama and Hugging Face (`hf.co/...`).
+  - Added `create_ollama_model()` to register local `.gguf` files with Ollama.
+  - Added `fetch_openai_compatible_models()` to query models from any OpenAI-compatible API.
+  - Built-in Persona System Prompt Presets: *Tsundere B-chan*, *Helpful & Friendly Assistant*, *Senior Coding Companion*, *Casual Gamer Buddy*.
+- **AI Engine & Hyperparameters Tab (Phase 3) (`gui/tabs/ai_models_tab.py`)**:
+  - **Provider Switcher**: One-click switching between Ollama, LM Studio, OpenRouter, Google Gemini, OpenAI, Groq, or Custom endpoints.
+  - **Dynamic Parameter Sliders**: Temperature, Top-P, and Max Tokens (universal), with live value feedback badges.
+  - **Local Hardware Settings**: Context size (`num_ctx`), Min-P, Repeat Penalty, and GPU VRAM Keep-Alive (automatically folded when cloud providers are selected).
+  - **Ollama / Hugging Face Manager**: Input box to pull models directly by name or Hugging Face repo, plus one-click `.gguf` file importer.
+  - **Persona Prompt Studio**: Switch between built-in persona presets or edit custom prompts with real-time preview.
+  - **Vision Pipeline Settings**: Toggle OCR vision analysis, specify vision models, dimensions, and prediction token counts.
+- **Asynchronous Lifecycle Runner (`bot/runner.py`)**:
+  - Implemented `BotRunner` and `BotState` to decouple `TsundereBot` from blocking CLI loops.
+  - Added non-blocking `start()`, `stop()`, `restart()`, and state-change hooks.
+  - Implemented `update_avatar()`, `update_presence()`, `get_guilds()`, `get_sendable_channels()`, `fetch_channel_history()`, and `send_message_as_bot()`.
+  - Added live `on_message` listener hook routing incoming messages to UI consumers.
+- **Desktop Application Shell (`app.py`, `gui/`)**:
+  - Built modern PySide6 desktop interface with `qasync` event loop integration.
+  - Added `gui/theme.py` with Discord-style dark mode styling (`DARK_THEME_QSS`).
+  - Implemented `gui/log_handler.py` (`QtLogHandler`) for real-time thread-safe log streaming to the UI.
+  - Built Tab 1: **Dashboard & Connection** (`gui/tabs/dashboard_tab.py`) with masked token management, one-click Discord Gateway token verification, Start/Stop/Restart buttons, live metrics (latency, server counts), and log stream viewer with level filtering.
+- **Bot Identity & Multi-Server Chat Interface (Phase 2) (`gui/tabs/bot_control_tab.py`)**:
+  - **Bot Avatar Changer**: Image file picker, rounded avatar preview, live avatar fetch, and upload with rate-limit warnings.
+  - **Presence & Status Manager**: Real-time status switcher (`Online`, `Idle`, `Do Not Disturb`, `Invisible`) and custom activity types (`Playing`, `Listening`, `Watching`, `Streaming`, `Competing`, `Custom`).
+  - **Multi-Server Channel Explorer**: Hierarchical Server & Channel dropdowns that automatically filter for channels where the bot has permission to send messages.
+  - **Live Channel Feed**: Real-time message history viewer showing timestamps, author names, attachments, and message IDs. Automatically updates when new messages arrive.
+  - **Speak as Bot Console**: Multiline message editor, optional message reply ID targeting, file/image attachment picker, and line-split pacing toggle.
+- **Comprehensive Test Suites (`tests/test_gui_and_runner.py`, `tests/test_phase2_bot_control.py`)**:
+  - Added 15 new unit tests covering BotRunner lifecycle transitions, token persistence, avatar/presence guards, message sending, and GUI formatting (66 total tests passing).
+
+### 🔄 Changed
+- **CLI & GUI Dual Entrypoint (`main.py`)**:
+  - Running `python main.py` or `python app.py` launches the desktop GUI by default.
+  - Added `--cli` / `--headless` flag support to run in traditional terminal mode without GUI overhead.
+- **Safe Token Configuration (`bot/config.py`)**:
+  - Made `BotConfig.from_env(require_token=False)` support unconfigured tokens on first launch.
+  - Added `save_token()` to persist tokens to `.env` directly from the interface.
+
+---
+
 ## [v1.2] - Whole Database Wipe Command & Qwen 3.5 9B Revert
 
 ### 🌟 Added

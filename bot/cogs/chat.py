@@ -43,8 +43,28 @@ class ChatCog(commands.Cog, name="Chat"):
         if ctx.valid:
             return
 
-        # Trigger only when pinged directly (@bot)
-        if self.bot.user and self.bot.user in message.mentions:
+        # Trigger only when pinged directly (@bot) or in DMs
+        is_dm = message.guild is None
+        is_pinged = self.bot.user and self.bot.user in message.mentions
+
+        if is_dm or is_pinged:
+            # Check moderation rules & rate limits
+            moderation_mgr = getattr(self.bot, "moderation_manager", None)
+            if moderation_mgr:
+                guild_id = message.guild.id if message.guild else None
+                if not moderation_mgr.is_channel_allowed(guild_id, message.channel.id):
+                    return
+
+                if not moderation_mgr.check_rate_limit(message.author.id):
+                    try:
+                        await message.reply(
+                            "ちょっと待って... You're talking way too fast! Give me a second! 💢",
+                            mention_author=False,
+                        )
+                    except Exception:
+                        pass
+                    return
+
             await self._handle_bot_mention(message)
 
     async def _extract_image_description(
