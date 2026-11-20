@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
     QGridLayout,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -31,6 +30,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from gui.widgets import Card, StatusLabel
 from bot.config import DEFAULT_SYSTEM_PROMPT, BotConfig
 from bot.services.ai_helpers import (
     PROVIDER_PRESETS,
@@ -74,36 +74,36 @@ class AIModelsTab(QWidget):
 
     def _init_ui(self) -> None:
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(14, 14, 14, 14)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(16)
 
         # 1. Provider & Model Card
         main_layout.addWidget(self._create_provider_card())
 
         # 2. Hyperparameters Section (Universal + Local-only side-by-side)
         params_row = QHBoxLayout()
-        params_row.setSpacing(12)
+        params_row.setSpacing(16)
         params_row.addWidget(self._create_universal_params_card(), stretch=1)
         params_row.addWidget(self._create_local_params_card(), stretch=1)
         main_layout.addLayout(params_row)
 
         # 3. System Prompt & Vision Section
         lower_row = QHBoxLayout()
-        lower_row.setSpacing(12)
+        lower_row.setSpacing(16)
         lower_row.addWidget(self._create_persona_card(), stretch=2)
         lower_row.addWidget(self._create_vision_card(), stretch=1)
         main_layout.addLayout(lower_row)
 
         # 4. Action Bar
         action_row = QHBoxLayout()
-        self.btn_save_settings = QPushButton("💾 Save & Apply Settings")
+        self.btn_save_settings = QPushButton("Save && Apply Settings")
         self.btn_save_settings.setProperty("class", "primary")
         self.btn_save_settings.clicked.connect(self._on_save_settings)
 
         self.btn_reset_defaults = QPushButton("Reset Defaults")
         self.btn_reset_defaults.clicked.connect(self._on_reset_defaults)
 
-        self.lbl_status = QLabel("")
+        self.lbl_status = StatusLabel("")
         self.lbl_status.setProperty("class", "muted")
 
         action_row.addWidget(self.btn_save_settings)
@@ -117,9 +117,9 @@ class AIModelsTab(QWidget):
     # Card 1: Provider & Model Selector
     # -------------------------------------------------------------------------
 
-    def _create_provider_card(self) -> QGroupBox:
-        group = QGroupBox("AI Provider & Model Engine")
-        layout = QVBoxLayout(group)
+    def _create_provider_card(self) -> Card:
+        group = Card("AI Provider & Model Engine")
+        layout = group.body
         layout.setSpacing(10)
 
         # Provider Selector Row
@@ -153,7 +153,7 @@ class AIModelsTab(QWidget):
         self.combo_model.setMinimumWidth(200)
         row2.addWidget(self.combo_model, stretch=2)
 
-        self.btn_scan_models = QPushButton("🔄 Scan Models")
+        self.btn_scan_models = QPushButton("Scan Models")
         self.btn_scan_models.clicked.connect(self._on_scan_models)
         row2.addWidget(self.btn_scan_models)
 
@@ -161,11 +161,9 @@ class AIModelsTab(QWidget):
 
         # Local Ollama Tools Row (Pull from HF, Import GGUF)
         self.ollama_tools_frame = QFrame()
-        self.ollama_tools_frame.setStyleSheet(
-            "background-color: #111214; border-radius: 6px; padding: 6px;"
-        )
+        self.ollama_tools_frame.setProperty("class", "inset")
         tools_layout = QHBoxLayout(self.ollama_tools_frame)
-        tools_layout.setContentsMargins(6, 4, 6, 4)
+        tools_layout.setContentsMargins(10, 8, 10, 8)
         tools_layout.setSpacing(8)
 
         tools_layout.addWidget(QLabel("Pull Model (Ollama / Hugging Face):"))
@@ -173,17 +171,17 @@ class AIModelsTab(QWidget):
         self.txt_pull_name.setPlaceholderText("e.g. hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF or mistral")
         tools_layout.addWidget(self.txt_pull_name, stretch=1)
 
-        self.btn_pull_model = QPushButton("📥 Pull")
+        self.btn_pull_model = QPushButton("Pull")
         self.btn_pull_model.clicked.connect(self._on_pull_model)
         tools_layout.addWidget(self.btn_pull_model)
 
-        self.btn_import_gguf = QPushButton("📂 Import .GGUF File")
+        self.btn_import_gguf = QPushButton("Import .GGUF File")
         self.btn_import_gguf.clicked.connect(self._on_import_gguf)
         tools_layout.addWidget(self.btn_import_gguf)
 
         layout.addWidget(self.ollama_tools_frame)
 
-        self.lbl_model_action_status = QLabel("")
+        self.lbl_model_action_status = StatusLabel("")
         self.lbl_model_action_status.setProperty("class", "muted")
         layout.addWidget(self.lbl_model_action_status)
 
@@ -253,14 +251,14 @@ class AIModelsTab(QWidget):
                         self.combo_vision_model.setEditText(curr_vision)
 
                     self.lbl_model_action_status.setText(
-                        f"✅ Found {len(models)} model(s). Selected: {self.combo_model.currentText()}"
+                        f"Found {len(models)} model(s). Selected: {self.combo_model.currentText()}"
                     )
                     self.lbl_model_action_status.setStyleSheet("color: #23a55a;")
                 else:
-                    self.lbl_model_action_status.setText("⚠️ No models detected at this endpoint.")
+                    self.lbl_model_action_status.setText("No models detected at this endpoint.")
                     self.lbl_model_action_status.setStyleSheet("color: #f0b232;")
             except Exception as err:
-                self.lbl_model_action_status.setText(f"❌ Scan failed: {err}")
+                self.lbl_model_action_status.setText(f"Scan failed: {err}")
                 self.lbl_model_action_status.setStyleSheet("color: #da373c;")
             finally:
                 self.btn_scan_models.setEnabled(True)
@@ -270,7 +268,7 @@ class AIModelsTab(QWidget):
     def _on_pull_model(self) -> None:
         model_name = self.txt_pull_name.text().strip()
         if not model_name:
-            self.lbl_model_action_status.setText("⚠️ Enter a model name or Hugging Face repo ID to pull.")
+            self.lbl_model_action_status.setText("Enter a model name or Hugging Face repo ID to pull.")
             self.lbl_model_action_status.setStyleSheet("color: #f0b232;")
             return
 
@@ -291,11 +289,11 @@ class AIModelsTab(QWidget):
                     else:
                         self.lbl_model_action_status.setText(f"Pulling '{model_name}': {status}")
 
-                self.lbl_model_action_status.setText(f"✅ Successfully pulled '{model_name}'!")
+                self.lbl_model_action_status.setText(f"Successfully pulled '{model_name}'!")
                 self.lbl_model_action_status.setStyleSheet("color: #23a55a;")
                 self._on_scan_models()
             except Exception as err:
-                self.lbl_model_action_status.setText(f"❌ Pull failed: {err}")
+                self.lbl_model_action_status.setText(f"Pull failed: {err}")
                 self.lbl_model_action_status.setStyleSheet("color: #da373c;")
             finally:
                 self.btn_pull_model.setEnabled(True)
@@ -321,11 +319,11 @@ class AIModelsTab(QWidget):
         async def do_import() -> None:
             try:
                 await create_ollama_model(base_name, file_path, host=host)
-                self.lbl_model_action_status.setText(f"✅ Registered GGUF model as '{base_name}' in Ollama!")
+                self.lbl_model_action_status.setText(f"Registered GGUF model as '{base_name}' in Ollama!")
                 self.lbl_model_action_status.setStyleSheet("color: #23a55a;")
                 self._on_scan_models()
             except Exception as err:
-                self.lbl_model_action_status.setText(f"❌ GGUF registration failed: {err}")
+                self.lbl_model_action_status.setText(f"GGUF registration failed: {err}")
                 self.lbl_model_action_status.setStyleSheet("color: #da373c;")
 
         asyncio.create_task(do_import())
@@ -334,9 +332,10 @@ class AIModelsTab(QWidget):
     # Card 2: Universal Generation Parameters
     # -------------------------------------------------------------------------
 
-    def _create_universal_params_card(self) -> QGroupBox:
-        group = QGroupBox("Universal Generation Hyperparameters")
-        layout = QGridLayout(group)
+    def _create_universal_params_card(self) -> Card:
+        group = Card("Universal Generation Hyperparameters")
+        layout = QGridLayout()
+        group.body.addLayout(layout)
         layout.setSpacing(8)
 
         # Temperature
@@ -368,6 +367,7 @@ class AIModelsTab(QWidget):
         self.spin_max_tokens.setSingleStep(64)
         self.spin_max_tokens.setValue(512)
         layout.addWidget(self.spin_max_tokens, 2, 1, 1, 2)
+        layout.setRowStretch(3, 1)  # keep rows packed at the top
 
         return group
 
@@ -375,9 +375,10 @@ class AIModelsTab(QWidget):
     # Card 3: Local-Only Hardware & Sampling Parameters
     # -------------------------------------------------------------------------
 
-    def _create_local_params_card(self) -> QGroupBox:
-        self.local_params_group = QGroupBox("Local-Only Hardware & Sampling")
-        layout = QGridLayout(self.local_params_group)
+    def _create_local_params_card(self) -> Card:
+        self.local_params_group = Card("Local-Only Hardware & Sampling")
+        layout = QGridLayout()
+        self.local_params_group.body.addLayout(layout)
         layout.setSpacing(8)
 
         # Context Size (num_ctx)
@@ -415,6 +416,7 @@ class AIModelsTab(QWidget):
         self.txt_keep_alive.setText("24h")
         self.txt_keep_alive.setPlaceholderText("e.g. 24h, 1h, 0s")
         layout.addWidget(self.txt_keep_alive, 3, 1, 1, 2)
+        layout.setRowStretch(4, 1)  # keep rows packed at the top
 
         return self.local_params_group
 
@@ -422,9 +424,9 @@ class AIModelsTab(QWidget):
     # Card 4: System Prompt & Personas
     # -------------------------------------------------------------------------
 
-    def _create_persona_card(self) -> QGroupBox:
-        group = QGroupBox("System Prompt & Persona Engine")
-        layout = QVBoxLayout(group)
+    def _create_persona_card(self) -> Card:
+        group = Card("System Prompt & Persona Engine")
+        layout = group.body
         layout.setSpacing(6)
 
         header_row = QHBoxLayout()
@@ -437,10 +439,6 @@ class AIModelsTab(QWidget):
         layout.addLayout(header_row)
 
         self.txt_system_prompt = QPlainTextEdit()
-        self.txt_system_prompt.setMaximumHeight(110)
-        self.txt_system_prompt.setStyleSheet(
-            "background-color: #111214; color: #dbdee1; font-size: 12px;"
-        )
         layout.addWidget(self.txt_system_prompt)
 
         return group
@@ -456,9 +454,9 @@ class AIModelsTab(QWidget):
     # Card 5: Vision Settings
     # -------------------------------------------------------------------------
 
-    def _create_vision_card(self) -> QGroupBox:
-        group = QGroupBox("Vision & Multimodal OCR")
-        layout = QVBoxLayout(group)
+    def _create_vision_card(self) -> Card:
+        group = Card("Vision & Multimodal OCR")
+        layout = group.body
         layout.setSpacing(6)
 
         self.chk_vision_enabled = QCheckBox("Enable Vision Perception")
@@ -577,9 +575,9 @@ class AIModelsTab(QWidget):
         # The bot shares this config object, so everything applies live except the host:
         # the Ollama clients are built once when the bot starts.
         if self.main_window.runner.bot and self.config.ollama_host != old_host:
-            self.lbl_status.setText("✅ AI settings saved. Restart the bot to use the new Ollama host.")
+            self.lbl_status.setText("AI settings saved. Restart the bot to use the new Ollama host.")
         else:
-            self.lbl_status.setText("✅ AI settings saved and applied to bot runtime!")
+            self.lbl_status.setText("AI settings saved and applied to bot runtime!")
         self.lbl_status.setStyleSheet("color: #23a55a;")
 
     def _on_reset_defaults(self) -> None:

@@ -28,7 +28,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QFrame,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -40,6 +39,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from gui.widgets import Card, StatusLabel
 from bot.config import BotConfig
 from bot.runner import BotRunner, BotState
 
@@ -79,17 +79,18 @@ class BotControlTab(QWidget):
 
     def _init_ui(self) -> None:
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(14)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(16)
 
         # Left Column: Identity & Presence (Width ~340px)
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(14)
+        left_layout.setSpacing(16)
 
         left_layout.addWidget(self._create_avatar_card())
         left_layout.addWidget(self._create_presence_card())
@@ -109,9 +110,9 @@ class BotControlTab(QWidget):
     # Avatar Section
     # -------------------------------------------------------------------------
 
-    def _create_avatar_card(self) -> QGroupBox:
-        group = QGroupBox("Bot Profile & Avatar")
-        layout = QVBoxLayout(group)
+    def _create_avatar_card(self) -> Card:
+        group = Card("Bot Profile & Avatar")
+        layout = group.body
         layout.setSpacing(10)
 
         # Avatar Preview
@@ -120,7 +121,7 @@ class BotControlTab(QWidget):
         self.avatar_preview.setFixedSize(88, 88)
         self.avatar_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.avatar_preview.setStyleSheet(
-            "background-color: #111214; border: 2px solid #35373c; border-radius: 44px; color: #949ba4;"
+            "background-color: #1e1f22; border-radius: 44px; color: #949ba4;"
         )
         self.avatar_preview.setText("No Avatar")
 
@@ -139,7 +140,7 @@ class BotControlTab(QWidget):
         preview_row.addLayout(avatar_info_col)
         layout.addLayout(preview_row)
 
-        self.selected_avatar_lbl = QLabel("")
+        self.selected_avatar_lbl = StatusLabel("")
         self.selected_avatar_lbl.setWordWrap(True)
         self.selected_avatar_lbl.setProperty("class", "muted")
         layout.addWidget(self.selected_avatar_lbl)
@@ -157,12 +158,12 @@ class BotControlTab(QWidget):
         btn_row.addWidget(self.btn_fetch_avatar)
         layout.addLayout(btn_row)
 
-        rate_limit_notice = QLabel("⚠️ Note: Discord limits avatar changes to twice per 10 minutes.")
+        rate_limit_notice = QLabel("Note: Discord limits avatar changes to twice per 10 minutes.")
         rate_limit_notice.setProperty("class", "muted")
         rate_limit_notice.setWordWrap(True)
         layout.addWidget(rate_limit_notice)
 
-        self.avatar_status_lbl = QLabel("")
+        self.avatar_status_lbl = StatusLabel("")
         self.avatar_status_lbl.setWordWrap(True)
         layout.addWidget(self.avatar_status_lbl)
 
@@ -193,7 +194,7 @@ class BotControlTab(QWidget):
 
     def _on_fetch_current_avatar(self) -> None:
         if not self.runner.is_running:
-            self.avatar_status_lbl.setText("⚠️ Start the bot first to fetch current avatar.")
+            self.avatar_status_lbl.setText("Start the bot first to fetch current avatar.")
             self.avatar_status_lbl.setStyleSheet("color: #f0b232;")
             return
 
@@ -211,7 +212,7 @@ class BotControlTab(QWidget):
                         Qt.TransformationMode.SmoothTransformation,
                     )
                 )
-                self.avatar_status_lbl.setText("✅ Avatar loaded.")
+                self.avatar_status_lbl.setText("Avatar loaded.")
                 self.avatar_status_lbl.setStyleSheet("color: #23a55a;")
             else:
                 self.avatar_status_lbl.setText("Bot has default Discord avatar.")
@@ -221,12 +222,12 @@ class BotControlTab(QWidget):
 
     def _on_apply_avatar(self) -> None:
         if not self.selected_avatar_path or not os.path.exists(self.selected_avatar_path):
-            self.avatar_status_lbl.setText("⚠️ Please select a valid image file.")
+            self.avatar_status_lbl.setText("Please select a valid image file.")
             self.avatar_status_lbl.setStyleSheet("color: #f0b232;")
             return
 
         if not self.runner.is_running:
-            self.avatar_status_lbl.setText("⚠️ Bot must be online to update avatar.")
+            self.avatar_status_lbl.setText("Bot must be online to update avatar.")
             self.avatar_status_lbl.setStyleSheet("color: #f0b232;")
             return
 
@@ -239,13 +240,13 @@ class BotControlTab(QWidget):
                 with open(self.selected_avatar_path, "rb") as f:
                     image_bytes = f.read()
                 await self.runner.update_avatar(image_bytes)
-                self.avatar_status_lbl.setText("✅ Avatar updated successfully!")
+                self.avatar_status_lbl.setText("Avatar updated successfully!")
                 self.avatar_status_lbl.setStyleSheet("color: #23a55a;")
             except discord.HTTPException as err:
-                self.avatar_status_lbl.setText(f"❌ Discord Error: {err}")
+                self.avatar_status_lbl.setText(f"Discord Error: {err}")
                 self.avatar_status_lbl.setStyleSheet("color: #da373c;")
             except Exception as err:
-                self.avatar_status_lbl.setText(f"❌ Error: {err}")
+                self.avatar_status_lbl.setText(f"Error: {err}")
                 self.avatar_status_lbl.setStyleSheet("color: #da373c;")
             finally:
                 self.btn_apply_avatar.setEnabled(self.runner.is_running)
@@ -256,9 +257,9 @@ class BotControlTab(QWidget):
     # Presence & Status Section
     # -------------------------------------------------------------------------
 
-    def _create_presence_card(self) -> QGroupBox:
-        group = QGroupBox("Status & Activity Presence")
-        layout = QVBoxLayout(group)
+    def _create_presence_card(self) -> Card:
+        group = Card("Status & Activity Presence")
+        layout = group.body
         layout.setSpacing(10)
 
         # Status mode
@@ -286,10 +287,11 @@ class BotControlTab(QWidget):
 
         self.btn_apply_presence = QPushButton("Apply Presence")
         self.btn_apply_presence.setProperty("class", "primary")
+        self.btn_apply_presence.setEnabled(False)  # enabled once the bot is ONLINE
         self.btn_apply_presence.clicked.connect(self._on_apply_presence)
         layout.addWidget(self.btn_apply_presence)
 
-        self.presence_status_lbl = QLabel("")
+        self.presence_status_lbl = StatusLabel("")
         self.presence_status_lbl.setWordWrap(True)
         layout.addWidget(self.presence_status_lbl)
 
@@ -297,7 +299,7 @@ class BotControlTab(QWidget):
 
     def _on_apply_presence(self) -> None:
         if not self.runner.is_running:
-            self.presence_status_lbl.setText("⚠️ Bot must be online to update presence.")
+            self.presence_status_lbl.setText("Bot must be online to update presence.")
             self.presence_status_lbl.setStyleSheet("color: #f0b232;")
             return
 
@@ -308,10 +310,10 @@ class BotControlTab(QWidget):
         async def apply() -> None:
             try:
                 await self.runner.update_presence(status, act_type, text)
-                self.presence_status_lbl.setText(f"✅ Presence set to {status} ({act_type} {text})")
+                self.presence_status_lbl.setText(f"Presence set to {status} ({act_type} {text})")
                 self.presence_status_lbl.setStyleSheet("color: #23a55a;")
             except Exception as err:
-                self.presence_status_lbl.setText(f"❌ Failed: {err}")
+                self.presence_status_lbl.setText(f"Failed: {err}")
                 self.presence_status_lbl.setStyleSheet("color: #da373c;")
 
         asyncio.create_task(apply())
@@ -320,16 +322,16 @@ class BotControlTab(QWidget):
     # Multi-Server Explorer & Remote Sender
     # -------------------------------------------------------------------------
 
-    def _create_server_chat_card(self) -> QGroupBox:
-        group = QGroupBox("Multi-Server Channel Explorer & Remote Chat")
-        layout = QVBoxLayout(group)
+    def _create_server_chat_card(self) -> Card:
+        group = Card("Multi-Server Channel Explorer & Remote Chat")
+        layout = group.body
         layout.setSpacing(10)
 
         # Server & Channel Navigation Header
         nav_box = QFrame()
-        nav_box.setStyleSheet("background-color: #111214; border-radius: 6px; padding: 6px;")
+        nav_box.setProperty("class", "inset")
         nav_layout = QHBoxLayout(nav_box)
-        nav_layout.setContentsMargins(6, 6, 6, 6)
+        nav_layout.setContentsMargins(10, 8, 10, 8)
         nav_layout.setSpacing(8)
 
         nav_layout.addWidget(QLabel("Server:"))
@@ -338,8 +340,7 @@ class BotControlTab(QWidget):
         self.combo_guilds.currentIndexChanged.connect(self._on_guild_selected)
         nav_layout.addWidget(self.combo_guilds, stretch=1)
 
-        self.btn_refresh_servers = QPushButton("🔄 Refresh")
-        self.btn_refresh_servers.setFixedWidth(80)
+        self.btn_refresh_servers = QPushButton("Refresh")
         self.btn_refresh_servers.clicked.connect(self.refresh_guilds)
         nav_layout.addWidget(self.btn_refresh_servers)
 
@@ -350,7 +351,6 @@ class BotControlTab(QWidget):
         nav_layout.addWidget(self.combo_channels, stretch=1)
 
         self.btn_fetch_history = QPushButton("Load Feed")
-        self.btn_fetch_history.setFixedWidth(85)
         self.btn_fetch_history.clicked.connect(self._on_fetch_feed_clicked)
         nav_layout.addWidget(self.btn_fetch_history)
 
@@ -358,39 +358,36 @@ class BotControlTab(QWidget):
 
         # Live Message Feed Area
         self.feed_browser = QTextBrowser()
+        self.feed_browser.setPlaceholderText("Pick a server and channel, then Load Feed to see recent messages.")
         self.feed_browser.setOpenLinks(False)
         self.feed_browser.setOpenExternalLinks(False)
         self.feed_browser.anchorClicked.connect(self._on_feed_anchor_clicked)
-        self.feed_browser.setStyleSheet(
-            "background-color: #111214; color: #dbdee1; border: 1px solid #35373c; border-radius: 6px; padding: 8px;"
-        )
         layout.addWidget(self.feed_browser, stretch=1)
 
         # Speak-As-Bot Sender Box
         sender_frame = QFrame()
-        sender_frame.setStyleSheet("background-color: #2b2d31; border: 1px solid #35373c; border-radius: 8px; padding: 8px;")
+        sender_frame.setProperty("class", "inset")
         sender_layout = QVBoxLayout(sender_frame)
-        sender_layout.setContentsMargins(8, 8, 8, 8)
+        sender_layout.setContentsMargins(12, 12, 12, 12)
         sender_layout.setSpacing(8)
 
         # Top tools in sender: Reply ID and Attachments
         tools_row = QHBoxLayout()
         tools_row.addWidget(QLabel("Reply to Msg ID:"))
         self.txt_reply_id = QLineEdit()
-        self.txt_reply_id.setPlaceholderText("Click [↩ Reply] on feed")
+        self.txt_reply_id.setPlaceholderText("Click Reply on a feed message")
         self.txt_reply_id.setMaximumWidth(160)
         tools_row.addWidget(self.txt_reply_id)
 
-        self.btn_attach = QPushButton("📎 Attach File")
+        self.btn_attach = QPushButton("Attach File")
         self.btn_attach.clicked.connect(self._on_browse_attachment)
         tools_row.addWidget(self.btn_attach)
 
-        self.lbl_attachment_name = QLabel("")
+        self.lbl_attachment_name = StatusLabel("")
         self.lbl_attachment_name.setProperty("class", "muted")
         tools_row.addWidget(self.lbl_attachment_name)
 
-        self.btn_clear_attachment = QPushButton("✖")
-        self.btn_clear_attachment.setFixedWidth(28)
+        self.btn_clear_attachment = QPushButton("Remove")
         self.btn_clear_attachment.setVisible(False)
         self.btn_clear_attachment.clicked.connect(self._clear_attachment)
         tools_row.addWidget(self.btn_clear_attachment)
@@ -400,21 +397,18 @@ class BotControlTab(QWidget):
 
         # Interactive Reply Target Banner
         self.reply_banner = QFrame()
-        self.reply_banner.setStyleSheet(
-            "background-color: #1e1f22; border-left: 3px solid #5865f2; border-radius: 4px; padding: 4px 8px;"
-        )
+        self.reply_banner.setProperty("class", "replyBanner")
         self.reply_banner.setVisible(False)
         banner_layout = QHBoxLayout(self.reply_banner)
-        banner_layout.setContentsMargins(6, 2, 6, 2)
+        banner_layout.setContentsMargins(10, 6, 10, 6)
         banner_layout.setSpacing(6)
 
-        self.lbl_reply_info = QLabel("")
+        self.lbl_reply_info = StatusLabel("")
         self.lbl_reply_info.setTextFormat(Qt.TextFormat.PlainText)  # shows a Discord name; never render it as HTML
         self.lbl_reply_info.setStyleSheet("color: #5865f2; font-weight: bold; font-size: 12px;")
         banner_layout.addWidget(self.lbl_reply_info, stretch=1)
 
-        self.btn_cancel_reply = QPushButton("✖ Cancel Reply")
-        self.btn_cancel_reply.setFixedWidth(105)
+        self.btn_cancel_reply = QPushButton("Cancel Reply")
         self.btn_cancel_reply.setStyleSheet("background-color: transparent; color: #949ba4; font-size: 11px;")
         self.btn_cancel_reply.clicked.connect(self._clear_reply_target)
         banner_layout.addWidget(self.btn_cancel_reply)
@@ -435,16 +429,16 @@ class BotControlTab(QWidget):
 
         send_row.addStretch()
 
-        self.btn_send_message = QPushButton("🚀 Send as Bot")
+        self.btn_send_message = QPushButton("Send as Bot")
         self.btn_send_message.setProperty("class", "primary")
-        self.btn_send_message.setFixedWidth(130)
+        self.btn_send_message.setEnabled(False)  # enabled once the bot is ONLINE
         self.btn_send_message.clicked.connect(self._on_send_message_clicked)
         send_row.addWidget(self.btn_send_message)
 
         sender_layout.addLayout(send_row)
         layout.addWidget(sender_frame)
 
-        self.chat_status_lbl = QLabel("")
+        self.chat_status_lbl = StatusLabel("")
         layout.addWidget(self.chat_status_lbl)
 
         return group
@@ -491,7 +485,7 @@ class BotControlTab(QWidget):
             return
 
         for ch in channels:
-            prefix = "#" if hasattr(ch, "text") or isinstance(ch, discord.TextChannel) else "🧵"
+            prefix = "#" if hasattr(ch, "text") or isinstance(ch, discord.TextChannel) else "thread:"
             self.combo_channels.addItem(f"{prefix} {ch.name}", ch.id)
 
         self.combo_channels.blockSignals(False)
@@ -545,7 +539,7 @@ class BotControlTab(QWidget):
         attachment_str = ""
         if msg.attachments:
             att_names = [html.escape(a.filename) for a in msg.attachments]
-            attachment_str = f"<br><span style='color: #f0b232; font-size: 11px;'>📎 [{', '.join(att_names)}]</span>"
+            attachment_str = f"<br><span style='color: #f0b232; font-size: 11px;'>Attachments: {', '.join(att_names)}</span>"
 
         reply_str = ""
         if msg.reference and msg.reference.message_id:
@@ -568,7 +562,7 @@ class BotControlTab(QWidget):
             f"<span style='margin-left: 10px;'>"
             f"<a href='action://reply?id={msg_id}&author={clean_author}' "
             f"title='Click to reply to this message' "
-            f"style='color: #5865f2; text-decoration: none; font-size: 11px; background-color: #2b2d31; padding: 2px 6px; border-radius: 4px; font-weight: bold;'>↩ Reply</a> "
+            f"style='color: #5865f2; text-decoration: none; font-size: 11px; background-color: #2b2d31; padding: 2px 6px; border-radius: 4px; font-weight: bold;'>Reply</a> "
             f"<a href='action://mention?id={author_id}&name={clean_author}' "
             f"title='Click to mention @{author_html}' "
             f"style='color: #23a55a; text-decoration: none; font-size: 11px; background-color: #2b2d31; padding: 2px 6px; border-radius: 4px; font-weight: bold;'>@ Mention</a>"
@@ -578,7 +572,7 @@ class BotControlTab(QWidget):
         )
 
     def _on_feed_anchor_clicked(self, url: QUrl) -> None:
-        """Handles user clicking [↩ Reply], [@ Mention], or author names in the live feed."""
+        """Handles user clicking Reply, @ Mention, or author names in the live feed."""
         scheme = url.scheme()
         if scheme == "action":
             action_type = url.host()
@@ -596,7 +590,7 @@ class BotControlTab(QWidget):
 
     def _set_reply_target(self, msg_id: str, author: str) -> None:
         self.txt_reply_id.setText(str(msg_id))
-        self.lbl_reply_info.setText(f"↩ Replying to @{author} (Message ID: {msg_id})")
+        self.lbl_reply_info.setText(f"Replying to @{author} (Message ID: {msg_id})")
         self.reply_banner.setVisible(True)
         self.txt_message_input.setFocus()
 
@@ -646,19 +640,19 @@ class BotControlTab(QWidget):
 
     def _on_send_message_clicked(self) -> None:
         if not self.runner.is_running:
-            self.chat_status_lbl.setText("⚠️ Start the bot first to send messages.")
+            self.chat_status_lbl.setText("Start the bot first to send messages.")
             self.chat_status_lbl.setStyleSheet("color: #f0b232;")
             return
 
         if not self.selected_channel_id:
-            self.chat_status_lbl.setText("⚠️ Please select an active server channel.")
+            self.chat_status_lbl.setText("Please select an active server channel.")
             self.chat_status_lbl.setStyleSheet("color: #f0b232;")
             return
 
         content = self.txt_message_input.toPlainText().strip()
         attachment = self.selected_attachment_path
         if not content and not attachment:
-            self.chat_status_lbl.setText("⚠️ Cannot send empty message without attachment.")
+            self.chat_status_lbl.setText("Cannot send empty message without attachment.")
             self.chat_status_lbl.setStyleSheet("color: #f0b232;")
             return
 
@@ -679,7 +673,7 @@ class BotControlTab(QWidget):
                     reply_to_id=reply_id,
                     split_lines=split_lines,
                 )
-                self.chat_status_lbl.setText(f"✅ Sent {len(sent_msgs)} message(s) successfully!")
+                self.chat_status_lbl.setText(f"Sent {len(sent_msgs)} message(s) successfully!")
                 self.chat_status_lbl.setStyleSheet("color: #23a55a;")
 
                 # Clear inputs
@@ -688,10 +682,10 @@ class BotControlTab(QWidget):
                 self.txt_reply_id.clear()
 
             except Exception as err:
-                self.chat_status_lbl.setText(f"❌ Failed to send: {err}")
+                self.chat_status_lbl.setText(f"Failed to send: {err}")
                 self.chat_status_lbl.setStyleSheet("color: #da373c;")
             finally:
-                self.btn_send_message.setEnabled(True)
+                self.btn_send_message.setEnabled(self.runner.is_running)
 
         asyncio.create_task(send())
 
@@ -699,6 +693,7 @@ class BotControlTab(QWidget):
         """Called when bot connects or disconnects to refresh guild list & buttons."""
         if state == BotState.ONLINE:
             self.btn_apply_presence.setEnabled(True)
+            self.btn_send_message.setEnabled(True)
             self.btn_apply_avatar.setEnabled(bool(self.selected_avatar_path))
             # Refresh server dropdown after short gateway sync
             QTimer.singleShot(1500, self.refresh_guilds)
@@ -706,5 +701,6 @@ class BotControlTab(QWidget):
         else:
             self.btn_apply_presence.setEnabled(False)
             self.btn_apply_avatar.setEnabled(False)
+            self.btn_send_message.setEnabled(False)
             self.combo_guilds.clear()
             self.combo_channels.clear()

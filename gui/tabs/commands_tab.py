@@ -18,7 +18,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
     QGridLayout,
-    QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -35,6 +34,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from gui.widgets import Card, StatusLabel
 from bot.custom_commands import CustomCommand, CustomCommandManager
 from bot.plugins import PluginManager
 
@@ -61,11 +61,12 @@ class CommandsTab(QWidget):
 
     def _init_ui(self) -> None:
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(14)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(16)
 
         # Left Column: No-Code Command Studio (55% width)
         left_box = self._create_command_studio_card()
@@ -84,9 +85,9 @@ class CommandsTab(QWidget):
     # Left Column: Custom Command Studio
     # -------------------------------------------------------------------------
 
-    def _create_command_studio_card(self) -> QGroupBox:
-        group = QGroupBox("No-Code Custom Slash Command Studio")
-        layout = QVBoxLayout(group)
+    def _create_command_studio_card(self) -> Card:
+        group = Card("No-Code Custom Slash Command Studio")
+        layout = group.body
         layout.setSpacing(10)
 
         # Top Bar: List & New/Delete buttons
@@ -94,11 +95,11 @@ class CommandsTab(QWidget):
         list_nav_row.addWidget(QLabel("Registered Custom Commands:"))
         list_nav_row.addStretch()
 
-        self.btn_new_cmd = QPushButton("➕ New Command")
+        self.btn_new_cmd = QPushButton("New Command")
         self.btn_new_cmd.clicked.connect(self._on_new_command_clicked)
         list_nav_row.addWidget(self.btn_new_cmd)
 
-        self.btn_del_cmd = QPushButton("🗑️ Delete")
+        self.btn_del_cmd = QPushButton("Delete")
         self.btn_del_cmd.setProperty("class", "danger")
         self.btn_del_cmd.clicked.connect(self._on_delete_command_clicked)
         list_nav_row.addWidget(self.btn_del_cmd)
@@ -107,19 +108,13 @@ class CommandsTab(QWidget):
 
         self.cmd_list_widget = QListWidget()
         self.cmd_list_widget.setMaximumHeight(110)
-        self.cmd_list_widget.setStyleSheet(
-            "background-color: #111214; border: 1px solid #35373c; border-radius: 6px; padding: 4px;"
-        )
         self.cmd_list_widget.currentRowChanged.connect(self._on_command_selected_from_list)
         layout.addWidget(self.cmd_list_widget)
 
         # Editor Form Frame
         editor_frame = QFrame()
-        editor_frame.setStyleSheet(
-            "background-color: #2b2d31; border: 1px solid #35373c; border-radius: 8px; padding: 10px;"
-        )
         editor_layout = QVBoxLayout(editor_frame)
-        editor_layout.setContentsMargins(8, 8, 8, 8)
+        editor_layout.setContentsMargins(0, 4, 0, 0)
         editor_layout.setSpacing(8)
 
         # Command Name & Type
@@ -131,9 +126,9 @@ class CommandsTab(QWidget):
 
         row1.addWidget(QLabel("Type:"))
         self.combo_cmd_type = QComboBox()
-        self.combo_cmd_type.addItem("🧠 AI Prompt Shortcut", "ai_prompt")
-        self.combo_cmd_type.addItem("📜 Rich Embed Card", "rich_embed")
-        self.combo_cmd_type.addItem("💬 Static Text Response", "static_text")
+        self.combo_cmd_type.addItem("AI Prompt Shortcut", "ai_prompt")
+        self.combo_cmd_type.addItem("Rich Embed Card", "rich_embed")
+        self.combo_cmd_type.addItem("Static Text Response", "static_text")
         self.combo_cmd_type.currentIndexChanged.connect(self._on_command_type_changed)
         row1.addWidget(self.combo_cmd_type, stretch=1)
         editor_layout.addLayout(row1)
@@ -154,15 +149,13 @@ class CommandsTab(QWidget):
         self.txt_cmd_content.setPlaceholderText(
             "Enter prompt template. You can use {query} for user input, {user} for user name, and {bot} for bot name."
         )
-        self.txt_cmd_content.setMaximumHeight(85)
-        self.txt_cmd_content.setStyleSheet("background-color: #111214; color: #dbdee1;")
-        editor_layout.addWidget(self.txt_cmd_content)
+        editor_layout.addWidget(self.txt_cmd_content, stretch=1)
 
         # Embed Fields Row (Hidden unless rich_embed)
         self.embed_fields_row = QHBoxLayout()
         self.embed_fields_row.addWidget(QLabel("Embed Title:"))
         self.txt_embed_title = QLineEdit()
-        self.txt_embed_title.setPlaceholderText("e.g. 📜 Server Rules")
+        self.txt_embed_title.setPlaceholderText("e.g. Server Rules")
         self.embed_fields_row.addWidget(self.txt_embed_title, stretch=2)
 
         self.embed_fields_row.addWidget(QLabel("Color:"))
@@ -185,11 +178,11 @@ class CommandsTab(QWidget):
 
         # Actions Row
         action_row = QHBoxLayout()
-        self.btn_save_cmd = QPushButton("💾 Save Command")
+        self.btn_save_cmd = QPushButton("Save Command")
         self.btn_save_cmd.setProperty("class", "primary")
         self.btn_save_cmd.clicked.connect(self._on_save_command_clicked)
 
-        self.btn_sync_tree = QPushButton("⚡ Sync to Discord Gateway")
+        self.btn_sync_tree = QPushButton("Sync to Discord Gateway")
         self.btn_sync_tree.clicked.connect(self._on_sync_discord_tree)
 
         action_row.addWidget(self.btn_save_cmd)
@@ -197,9 +190,9 @@ class CommandsTab(QWidget):
         action_row.addStretch()
         editor_layout.addLayout(action_row)
 
-        layout.addWidget(editor_frame)
+        layout.addWidget(editor_frame, stretch=1)
 
-        self.lbl_cmd_status = QLabel("")
+        self.lbl_cmd_status = StatusLabel("")
         self.lbl_cmd_status.setWordWrap(True)
         self.lbl_cmd_status.setProperty("class", "muted")
         layout.addWidget(self.lbl_cmd_status)
@@ -210,9 +203,9 @@ class CommandsTab(QWidget):
     # Right Column: Modular Plugin Manager
     # -------------------------------------------------------------------------
 
-    def _create_plugin_manager_card(self) -> QGroupBox:
-        group = QGroupBox("Modular Python Cog Plugins")
-        layout = QVBoxLayout(group)
+    def _create_plugin_manager_card(self) -> Card:
+        group = Card("Modular Python Cog Plugins")
+        layout = group.body
         layout.setSpacing(10)
 
         desc = QLabel(
@@ -231,17 +224,15 @@ class CommandsTab(QWidget):
         self.plugin_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self.plugin_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.plugin_table.verticalHeader().setVisible(False)
-        self.plugin_table.setStyleSheet(
-            "background-color: #111214; border: 1px solid #35373c; border-radius: 6px;"
-        )
+        self.plugin_table.verticalHeader().setDefaultSectionSize(44)  # room for the Load/Reload buttons
         layout.addWidget(self.plugin_table, stretch=1)
 
         # Plugin Tools Row
         tool_row = QHBoxLayout()
-        self.btn_open_folder = QPushButton("📂 Open Plugins Folder")
+        self.btn_open_folder = QPushButton("Open Plugins Folder")
         self.btn_open_folder.clicked.connect(self._on_open_plugins_folder)
 
-        self.btn_refresh_plugins = QPushButton("🔄 Refresh Plugins")
+        self.btn_refresh_plugins = QPushButton("Refresh Plugins")
         self.btn_refresh_plugins.clicked.connect(self._refresh_plugins_table)
 
         tool_row.addWidget(self.btn_open_folder)
@@ -249,7 +240,7 @@ class CommandsTab(QWidget):
         tool_row.addStretch()
         layout.addLayout(tool_row)
 
-        self.lbl_plugin_status = QLabel("")
+        self.lbl_plugin_status = StatusLabel("")
         self.lbl_plugin_status.setWordWrap(True)
         self.lbl_plugin_status.setProperty("class", "muted")
         layout.addWidget(self.lbl_plugin_status)
@@ -264,9 +255,9 @@ class CommandsTab(QWidget):
         self.cmd_list_widget.clear()
         for cmd in self.cmd_manager.commands:
             type_tag = {
-                "ai_prompt": "🧠 AI",
-                "rich_embed": "📜 Embed",
-                "static_text": "💬 Static",
+                "ai_prompt": "AI",
+                "rich_embed": "Embed",
+                "static_text": "Static",
             }.get(cmd.command_type, "Custom")
             status_tag = " [DISABLED]" if not cmd.enabled else ""
             item = QListWidgetItem(f"/{cmd.name}  [{type_tag}]{status_tag} — {cmd.description}")
@@ -353,7 +344,7 @@ class CommandsTab(QWidget):
         if reply == QMessageBox.StandardButton.Yes:
             self.cmd_manager.remove_command(cmd.name)
             self._refresh_command_list()
-            self.lbl_cmd_status.setText(f"🗑️ Command '/{cmd.name}' deleted. Sync to update Discord.")
+            self.lbl_cmd_status.setText(f"Command '/{cmd.name}' deleted. Sync to update Discord.")
             self.lbl_cmd_status.setStyleSheet("color: #23a55a;")
 
     def _on_save_command_clicked(self) -> None:
@@ -381,15 +372,15 @@ class CommandsTab(QWidget):
         try:
             self.cmd_manager.add_command(cmd)
             self._refresh_command_list()
-            self.lbl_cmd_status.setText(f"✅ Saved command '/{cmd.name}'! Click 'Sync to Discord Gateway' to activate.")
+            self.lbl_cmd_status.setText(f"Saved command '/{cmd.name}'! Click 'Sync to Discord Gateway' to activate.")
             self.lbl_cmd_status.setStyleSheet("color: #23a55a;")
         except ValueError as err:
-            self.lbl_cmd_status.setText(f"⚠️ Validation error: {err}")
+            self.lbl_cmd_status.setText(f"Validation error: {err}")
             self.lbl_cmd_status.setStyleSheet("color: #f0b232;")
 
     def _on_sync_discord_tree(self) -> None:
         if not self.main_window.runner.is_running:
-            self.lbl_cmd_status.setText("⚠️ Start the bot first to sync commands with Discord Gateway.")
+            self.lbl_cmd_status.setText("Start the bot first to sync commands with Discord Gateway.")
             self.lbl_cmd_status.setStyleSheet("color: #f0b232;")
             return
 
@@ -405,10 +396,10 @@ class CommandsTab(QWidget):
             try:
                 count = await self.cmd_manager.register_commands_to_bot(bot)
                 synced = await bot.tree.sync()
-                self.lbl_cmd_status.setText(f"✅ Successfully synced {len(synced)} command(s) with Discord!")
+                self.lbl_cmd_status.setText(f"Successfully synced {len(synced)} command(s) with Discord!")
                 self.lbl_cmd_status.setStyleSheet("color: #23a55a;")
             except Exception as err:
-                self.lbl_cmd_status.setText(f"❌ Gateway sync failed: {err}")
+                self.lbl_cmd_status.setText(f"Gateway sync failed: {err}")
                 self.lbl_cmd_status.setStyleSheet("color: #da373c;")
             finally:
                 self.btn_sync_tree.setEnabled(True)
@@ -451,7 +442,7 @@ class CommandsTab(QWidget):
             btn_toggle = QPushButton("Unload" if is_loaded else "Load")
             btn_toggle.clicked.connect(lambda _, n=name, loaded=is_loaded: self._on_toggle_plugin(n, loaded))
 
-            btn_reload = QPushButton("🔄 Reload")
+            btn_reload = QPushButton("Reload")
             btn_reload.setEnabled(is_loaded)
             btn_reload.clicked.connect(lambda _, n=name: self._on_reload_plugin(n))
 
@@ -461,7 +452,7 @@ class CommandsTab(QWidget):
 
     def _on_toggle_plugin(self, name: str, is_loaded: bool) -> None:
         if not self.main_window.runner.is_running:
-            self.lbl_plugin_status.setText("⚠️ Start the bot first to load/unload cogs.")
+            self.lbl_plugin_status.setText("Start the bot first to load/unload cogs.")
             self.lbl_plugin_status.setStyleSheet("color: #f0b232;")
             return
 
@@ -473,14 +464,14 @@ class CommandsTab(QWidget):
             try:
                 if is_loaded:
                     await self.plugin_manager.unload_plugin(bot, name)
-                    self.lbl_plugin_status.setText(f"✅ Unloaded plugin '{name}'.")
+                    self.lbl_plugin_status.setText(f"Unloaded plugin '{name}'.")
                 else:
                     await self.plugin_manager.load_plugin(bot, name)
-                    self.lbl_plugin_status.setText(f"✅ Loaded plugin '{name}'.")
+                    self.lbl_plugin_status.setText(f"Loaded plugin '{name}'.")
                 self.lbl_plugin_status.setStyleSheet("color: #23a55a;")
                 self._refresh_plugins_table()
             except Exception as err:
-                self.lbl_plugin_status.setText(f"❌ Plugin action failed: {err}")
+                self.lbl_plugin_status.setText(f"Plugin action failed: {err}")
                 self.lbl_plugin_status.setStyleSheet("color: #da373c;")
 
         asyncio.create_task(toggle())
@@ -495,11 +486,11 @@ class CommandsTab(QWidget):
         async def reload() -> None:
             try:
                 await self.plugin_manager.reload_plugin(bot, name)
-                self.lbl_plugin_status.setText(f"🔄 Reloaded plugin '{name}' successfully!")
+                self.lbl_plugin_status.setText(f"Reloaded plugin '{name}' successfully!")
                 self.lbl_plugin_status.setStyleSheet("color: #23a55a;")
                 self._refresh_plugins_table()
             except Exception as err:
-                self.lbl_plugin_status.setText(f"❌ Reload failed: {err}")
+                self.lbl_plugin_status.setText(f"Reload failed: {err}")
                 self.lbl_plugin_status.setStyleSheet("color: #da373c;")
 
         asyncio.create_task(reload())

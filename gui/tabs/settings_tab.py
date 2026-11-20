@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
     QGridLayout,
-    QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -34,6 +33,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from gui.widgets import Card, StatusLabel
 from bot.database import DatabaseManager
 from bot.moderation import ModerationManager
 
@@ -60,17 +60,18 @@ class SettingsTab(QWidget):
 
     def _init_ui(self) -> None:
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(14)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(16)
 
         # Left Column: Moderation Rules & App Preferences
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(12)
+        left_layout.setSpacing(16)
 
         left_layout.addWidget(self._create_moderation_card())
         left_layout.addWidget(self._create_app_preferences_card())
@@ -90,9 +91,9 @@ class SettingsTab(QWidget):
     # Left Column: Moderation & App Settings
     # -------------------------------------------------------------------------
 
-    def _create_moderation_card(self) -> QGroupBox:
-        group = QGroupBox("Server Privacy & Channel Moderation")
-        layout = QVBoxLayout(group)
+    def _create_moderation_card(self) -> Card:
+        group = Card("Server Privacy & Channel Moderation")
+        layout = group.body
         layout.setSpacing(10)
 
         # DM Toggle
@@ -117,8 +118,7 @@ class SettingsTab(QWidget):
         self.combo_mod_guilds.currentIndexChanged.connect(self._on_mod_guild_selected)
         server_row.addWidget(self.combo_mod_guilds, stretch=1)
 
-        self.btn_refresh_mod_guilds = QPushButton("🔄")
-        self.btn_refresh_mod_guilds.setFixedWidth(32)
+        self.btn_refresh_mod_guilds = QPushButton("Refresh")
         self.btn_refresh_mod_guilds.clicked.connect(self._refresh_mod_guilds)
         server_row.addWidget(self.btn_refresh_mod_guilds)
         layout.addLayout(server_row)
@@ -127,9 +127,6 @@ class SettingsTab(QWidget):
         layout.addWidget(QLabel("Select Channels for Whitelist / Blacklist:"))
         self.channels_checklist = QListWidget()
         self.channels_checklist.setMaximumHeight(130)
-        self.channels_checklist.setStyleSheet(
-            "background-color: #111214; border: 1px solid #35373c; border-radius: 6px;"
-        )
         self.channels_checklist.itemChanged.connect(self._on_channel_check_changed)
         layout.addWidget(self.channels_checklist)
 
@@ -153,9 +150,9 @@ class SettingsTab(QWidget):
 
         return group
 
-    def _create_app_preferences_card(self) -> QGroupBox:
-        group = QGroupBox("Application Preferences & System Tray")
-        layout = QVBoxLayout(group)
+    def _create_app_preferences_card(self) -> Card:
+        group = Card("Application Preferences & System Tray")
+        layout = group.body
         layout.setSpacing(10)
 
         self.chk_minimize_to_tray = QCheckBox("Minimize to Windows System Tray on close [X]")
@@ -165,12 +162,12 @@ class SettingsTab(QWidget):
         layout.addWidget(self.chk_start_minimized)
 
         # Save Button
-        self.btn_save_settings = QPushButton("💾 Save Moderation & Preferences")
+        self.btn_save_settings = QPushButton("Save Moderation && Preferences")
         self.btn_save_settings.setProperty("class", "primary")
         self.btn_save_settings.clicked.connect(self._on_save_preferences)
         layout.addWidget(self.btn_save_settings)
 
-        self.lbl_pref_status = QLabel("")
+        self.lbl_pref_status = StatusLabel("")
         self.lbl_pref_status.setProperty("class", "muted")
         layout.addWidget(self.lbl_pref_status)
 
@@ -180,9 +177,9 @@ class SettingsTab(QWidget):
     # Right Column: Memory Inspector
     # -------------------------------------------------------------------------
 
-    def _create_memory_inspector_card(self) -> QGroupBox:
-        group = QGroupBox("SQLite Conversation Memory Inspector")
-        layout = QVBoxLayout(group)
+    def _create_memory_inspector_card(self) -> Card:
+        group = Card("SQLite Conversation Memory Inspector")
+        layout = group.body
         layout.setSpacing(10)
 
         # Table of active channels
@@ -190,7 +187,7 @@ class SettingsTab(QWidget):
         top_row.addWidget(QLabel("Active Conversation Sessions:"))
         top_row.addStretch()
 
-        self.btn_refresh_memory = QPushButton("🔄 Refresh Sessions")
+        self.btn_refresh_memory = QPushButton("Refresh Sessions")
         self.btn_refresh_memory.clicked.connect(self._refresh_active_memory_channels)
         top_row.addWidget(self.btn_refresh_memory)
 
@@ -204,9 +201,6 @@ class SettingsTab(QWidget):
         self.table_channels.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.table_channels.verticalHeader().setVisible(False)
         self.table_channels.setMaximumHeight(140)
-        self.table_channels.setStyleSheet(
-            "background-color: #111214; border: 1px solid #35373c; border-radius: 6px;"
-        )
         self.table_channels.itemSelectionChanged.connect(self._on_memory_channel_selected)
         layout.addWidget(self.table_channels)
 
@@ -219,17 +213,14 @@ class SettingsTab(QWidget):
         self.table_messages.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table_messages.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.table_messages.verticalHeader().setVisible(False)
-        self.table_messages.setStyleSheet(
-            "background-color: #111214; border: 1px solid #35373c; border-radius: 6px;"
-        )
         layout.addWidget(self.table_messages, stretch=1)
 
         # Actions Row
         actions_row = QHBoxLayout()
-        self.btn_clear_channel = QPushButton("🧹 Clear Selected Channel")
+        self.btn_clear_channel = QPushButton("Clear Selected Channel")
         self.btn_clear_channel.clicked.connect(self._on_clear_channel_memory)
 
-        self.btn_wipe_all = QPushButton("⚠️ Wipe Entire Memory DB")
+        self.btn_wipe_all = QPushButton("Wipe Entire Memory DB")
         self.btn_wipe_all.setProperty("class", "danger")
         self.btn_wipe_all.clicked.connect(self._on_wipe_entire_database)
 
@@ -238,7 +229,7 @@ class SettingsTab(QWidget):
         actions_row.addStretch()
         layout.addLayout(actions_row)
 
-        self.lbl_memory_status = QLabel("")
+        self.lbl_memory_status = StatusLabel("")
         self.lbl_memory_status.setProperty("class", "muted")
         layout.addWidget(self.lbl_memory_status)
 
@@ -327,7 +318,7 @@ class SettingsTab(QWidget):
     def _on_save_preferences(self) -> None:
         admin_text = self.txt_admin_id.text().strip()
         if admin_text and not admin_text.isdigit():
-            self.lbl_pref_status.setText("⚠️ Bot Admin User ID must be digits only (or empty for no admin).")
+            self.lbl_pref_status.setText("Bot Admin User ID must be digits only (or empty for no admin).")
             self.lbl_pref_status.setStyleSheet("color: #f0b232;")
             return
         admin_id = int(admin_text or 0)
@@ -347,7 +338,7 @@ class SettingsTab(QWidget):
         if self.main_window.runner.bot and hasattr(self.main_window.runner.bot, "moderation_manager"):
             self.main_window.runner.bot.moderation_manager = self.mod_manager
 
-        self.lbl_pref_status.setText("✅ Settings saved successfully.")
+        self.lbl_pref_status.setText("Settings saved successfully.")
         self.lbl_pref_status.setStyleSheet("color: #23a55a;")
 
     # -------------------------------------------------------------------------
@@ -427,12 +418,12 @@ class SettingsTab(QWidget):
 
     def _show_memory_error(self, err: Exception) -> None:
         logger.error("Memory inspector action failed: %s", err)
-        self.lbl_memory_status.setText(f"❌ Database error: {err}")
+        self.lbl_memory_status.setText(f"Database error: {err}")
         self.lbl_memory_status.setStyleSheet("color: #da373c;")
 
     def _on_clear_channel_memory(self) -> None:
         if not self.selected_memory_channel_id:
-            self.lbl_memory_status.setText("⚠️ Select a channel session from the table first.")
+            self.lbl_memory_status.setText("Select a channel session from the table first.")
             self.lbl_memory_status.setStyleSheet("color: #f0b232;")
             return
 
@@ -454,7 +445,7 @@ class SettingsTab(QWidget):
                 self._refresh_active_memory_channels()
                 self.table_messages.setRowCount(0)
                 self.selected_memory_channel_id = None
-                self.lbl_memory_status.setText(f"🧹 Cleared memory for channel {channel_id}.")
+                self.lbl_memory_status.setText(f"Cleared memory for channel {channel_id}.")
                 self.lbl_memory_status.setStyleSheet("color: #23a55a;")
 
             asyncio.create_task(clear())
@@ -463,7 +454,7 @@ class SettingsTab(QWidget):
         reply = QMessageBox.warning(
             self,
             "Confirm Full Database Wipe",
-            "⚠️ DANGER: This will permanently purge ALL conversation history and VACUUM the database.\n\nProceed?",
+            "DANGER: This will permanently purge ALL conversation history and VACUUM the database.\n\nProceed?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -477,7 +468,7 @@ class SettingsTab(QWidget):
                 self._refresh_active_memory_channels()
                 self.table_messages.setRowCount(0)
                 self.selected_memory_channel_id = None
-                self.lbl_memory_status.setText(f"🗑️ Wiped {deleted} messages. Database is now completely empty.")
+                self.lbl_memory_status.setText(f"Wiped {deleted} messages. Database is now completely empty.")
                 self.lbl_memory_status.setStyleSheet("color: #23a55a;")
 
             asyncio.create_task(wipe())

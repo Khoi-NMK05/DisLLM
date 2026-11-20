@@ -12,12 +12,17 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QCloseEvent, QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
     QMainWindow,
     QMenu,
     QMessageBox,
+    QStackedWidget,
     QStatusBar,
     QSystemTrayIcon,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -34,6 +39,30 @@ from gui.tabs import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Discord presence colors: online, idle (busy transitioning), dnd (error), offline.
+_PRESENCE: dict[BotState, tuple[str, str]] = {
+    BotState.ONLINE: ("Online", "#23a55a"),
+    BotState.CONNECTING: ("Connecting...", "#f0b232"),
+    BotState.STOPPING: ("Stopping...", "#f0b232"),
+    BotState.ERROR: ("Error - see Dashboard", "#f23f43"),
+    BotState.DISCONNECTED: ("Disconnected", "#80848e"),
+}
+
+
+def _glyph_icon(char: str, color: str = "#80848e") -> QIcon:
+    """A monochrome text glyph rendered as an icon (Discord's channel '#')."""
+    pix = QPixmap(20, 20)
+    pix.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pix)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(QColor(color))
+    font = painter.font()
+    font.setPixelSize(17)
+    painter.setFont(font)
+    painter.drawText(pix.rect(), Qt.AlignmentFlag.AlignCenter, char)
+    painter.end()
+    return QIcon(pix)
 
 
 class MainWindow(QMainWindow):
@@ -83,7 +112,7 @@ class MainWindow(QMainWindow):
         act_dashboard = QAction("Dashboard", self)
         act_dashboard.triggered.connect(lambda: (self.tabs.setCurrentIndex(0), self._restore_from_tray()))
 
-        act_exit = QAction("Exit & Disconnect", self)
+        act_exit = QAction("Exit && Disconnect", self)
         act_exit.triggered.connect(self._force_exit)
 
         tray_menu.addAction(act_show)
@@ -111,19 +140,15 @@ class MainWindow(QMainWindow):
         self.close()
 
     def _init_ui(self) -> None:
-        self.setWindowTitle("Discord AI Companion — Desktop Control Center")
-        self.resize(1000, 720)
-        self.setMinimumSize(850, 580)
+        self.setWindowTitle("Discord AI Companion")
+        self.resize(1180, 760)
+        self.setMinimumSize(960, 620)
 
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(8)
-
-        # Tab navigation container
-        self.tabs = QTabWidget()
-        self.tabs.setDocumentMode(True)
+        root = QHBoxLayout(central_widget)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
 
         self.dashboard_tab = DashboardTab(main_window=self)
         self.bot_control_tab = BotControlTab(main_window=self)
@@ -131,18 +156,99 @@ class MainWindow(QMainWindow):
         self.commands_tab = CommandsTab(main_window=self)
         self.settings_tab = SettingsTab(main_window=self)
 
-        self.tabs.addTab(self.dashboard_tab, "📊 Dashboard")
-        self.tabs.addTab(self.bot_control_tab, "🎭 Bot & Multi-Server")
-        self.tabs.addTab(self.ai_models_tab, "🧠 AI Engine & Models")
-        self.tabs.addTab(self.commands_tab, "⚡ Commands & Personas")
-        self.tabs.addTab(self.settings_tab, "🛡️ Moderation & Settings")
+        # Pages; kept as `tabs` so callers can still use count()/setCurrentIndex().
+        self.tabs = QStackedWidget()
+        pages = [
+            (self.dashboard_tab, "Dashboard"),
+            (self.bot_control_tab, "Bot & Multi-Server"),
+            (self.ai_models_tab, "AI Engine & Models"),
+            (self.commands_tab, "Commands & Personas"),
+            (self.settings_tab, "Moderation & Settings"),
+        ]
+        for page, _ in pages:
+            self.tabs.addWidget(page)
 
-        main_layout.addWidget(self.tabs)
+        root.addWidget(self._create_sidebar([title for _, title in pages]))
+        root.addWidget(self.tabs, stretch=1)
 
-        # Status Bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage("Application Ready. Configure your Discord Bot Token to begin.")
+        self.status_bar.showMessage("Ready. Add your Discord bot token on the Dashboard to begin.")
+
+    def _create_sidebar(self, titles: list[str]) -> QFrame:
+        """Discord-style channel list: server header, section label, nav items, pinned status panel."""
+        sidebar = QFrame()
+        sidebar.setObjectName("sidebar")
+        sidebar.setFixedWidth(240)
+        layout = QVBoxLayout(sidebar)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        header = QLabel("Discord AI Companion")
+        header.setObjectName("sidebarHeader")
+        layout.addWidget(header)
+
+        section = QLabel("CONTROL CENTER")
+        section.setObjectName("sidebarSection")
+        layout.addWidget(section)
+
+        self.nav = QListWidget()
+        self.nav.setObjectName("nav")
+        self.nav.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.nav.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.nav.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.nav.setTextElideMode(Qt.TextElideMode.ElideRight)
+        hash_icon = _glyph_icon("#")
+        for title in titles:
+            self.nav.addItem(QListWidgetItem(hash_icon, title))
+        self.nav.currentRowChanged.connect(self.tabs.setCurrentIndex)
+        self.tabs.currentChanged.connect(self.nav.setCurrentRow)  # tray "Dashboard" action
+        self.nav.setCurrentRow(0)
+        layout.addWidget(self.nav, stretch=1)
+
+        layout.addWidget(self._create_status_panel())
+        return sidebar
+
+    def _create_status_panel(self) -> QFrame:
+        """Pinned bot identity + presence, modeled on Discord's bottom-left user panel."""
+        panel = QFrame()
+        panel.setObjectName("statusPanel")
+        row = QHBoxLayout(panel)
+        row.setContentsMargins(10, 10, 10, 10)
+        row.setSpacing(10)
+
+        avatar = QLabel("B")
+        avatar.setObjectName("statusAvatar")
+        avatar.setFixedSize(34, 34)
+        avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Presence dot overlaps the avatar corner, cut out by a ring in the panel color.
+        self.status_dot = QLabel(avatar)
+        self.status_dot.setObjectName("statusDot")
+        self.status_dot.setGeometry(22, 22, 14, 14)
+        row.addWidget(avatar)
+
+        text_col = QVBoxLayout()
+        text_col.setSpacing(0)
+        self.status_name = QLabel("Discord Bot")
+        self.status_name.setObjectName("statusName")
+        self.status_state = QLabel("Disconnected")
+        self.status_state.setObjectName("statusState")
+        text_col.addWidget(self.status_name)
+        text_col.addWidget(self.status_state)
+        row.addLayout(text_col, stretch=1)
+
+        self._update_status_panel(BotState.DISCONNECTED)
+        return panel
+
+    def _update_status_panel(self, state: BotState) -> None:
+        label, color = _PRESENCE[state]
+        self.status_state.setText(label)
+        self.status_dot.setStyleSheet(f"background-color: {color};")
+        bot = self.runner.bot
+        if state == BotState.ONLINE and bot and bot.user:
+            self.status_name.setText(bot.user.name)
+        elif state in (BotState.DISCONNECTED, BotState.ERROR):
+            self.status_name.setText("Discord Bot")
 
     def _setup_logging_bridge(self) -> None:
         """Hooks QtLogHandler into root logger to forward logs to the GUI."""
@@ -156,6 +262,7 @@ class MainWindow(QMainWindow):
 
     def _on_bot_state_changed(self, state: BotState, detail: str) -> None:
         """Thread/async callback passed to BotRunner."""
+        self._update_status_panel(state)
         self.dashboard_tab.on_bot_state_changed(state, detail)
         self.bot_control_tab.on_bot_state_changed(state, detail)
         self.commands_tab._refresh_plugins_table()

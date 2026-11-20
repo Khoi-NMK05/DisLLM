@@ -1,253 +1,372 @@
 """
-Modern dark styling and theme definition for the Discord AI Companion Desktop app.
+Discord-native dark theme for the Discord AI Companion desktop app.
+
+Surfaces step up in lightness only (no outlines on cards):
+  BASE #1e1f22 (window, sidebar) -> CARD #2b2d31 -> RAISED #35373c (hover) / #404249 (selected)
+Insets (inputs, wells) sink below their card: #1e1f22 / #111214.
+One accent: Blurple #5865f2. Status colors follow Discord presence.
 """
 
-DARK_THEME_QSS = """
-/* Global Application Styles */
+import os
+import tempfile
+
+# Qt 6 stylesheets can't draw arrows/ticks from CSS borders, so we ship tiny SVGs.
+# They are written to a temp folder at startup so this also works in the frozen .exe.
+_ICONS = {
+    "CHEVRON_DOWN": '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12">'
+    '<path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="#b5bac1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    "CHEVRON_UP": '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12">'
+    '<path d="M2.5 7.5 6 4l3.5 3.5" fill="none" stroke="#b5bac1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    "CHECK_MARK": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">'
+    '<path d="M3 7.2 5.8 10 11 4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+}
+
+
+def _icon_urls() -> dict[str, str]:
+    folder = os.path.join(tempfile.gettempdir(), "discord_ai_companion_icons")
+    os.makedirs(folder, exist_ok=True)
+    urls = {}
+    for name, svg in _ICONS.items():
+        path = os.path.join(folder, name.lower() + ".svg")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(svg)
+        urls[name] = '"' + path.replace("\\", "/") + '"'  # quoted: temp paths may contain spaces
+    return urls
+
+
+TOKENS = {
+    "BASE": "#1e1f22",
+    "CARD": "#2b2d31",
+    "RAISED": "#35373c",
+    "SELECTED": "#404249",
+    "INSET": "#1e1f22",
+    "WELL": "#111214",
+    "TEXT": "#dbdee1",
+    "TEXT_STRONG": "#f2f3f5",
+    "TEXT_MUTED": "#949ba4",
+    "TEXT_FAINT": "#6d6f78",
+    "HAIRLINE": "rgba(255, 255, 255, 0.06)",
+    "BLURPLE": "#5865f2",
+    "BLURPLE_HOVER": "#4752c4",
+    "BLURPLE_PRESSED": "#3c45a5",
+    "GREY_BTN": "#4e5058",
+    "GREY_BTN_HOVER": "#6d6f78",
+    "GREEN": "#23a55a",
+    "RED": "#da373c",
+    "RED_HOVER": "#a12828",
+}
+
+_QSS = """
+/* Text defaults only: backgrounds are set per surface so labels never paint boxes on cards. */
 QWidget {
-    background-color: #1e1f22;
-    color: #dbdee1;
-    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    color: TEXT;
+    font-family: "Segoe UI", "gg sans", "Helvetica Neue", Arial, sans-serif;
     font-size: 13px;
-    selection-background-color: #5865f2;
+    selection-background-color: BLURPLE;
     selection-color: #ffffff;
 }
 
-/* Card / Group Container */
-QFrame.card, QGroupBox {
-    background-color: #2b2d31;
-    border: 1px solid #35373c;
-    border-radius: 8px;
-    margin-top: 12px;
-    padding: 14px;
-    font-weight: bold;
+QMainWindow, QDialog, QMessageBox, QStackedWidget {
+    background-color: BASE;
 }
 
-QGroupBox::title {
-    subcontrol-origin: margin;
-    subcontrol-position: top left;
-    padding: 0 6px;
-    color: #949ba4;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+QLabel, QCheckBox, QRadioButton {
+    background: transparent;
 }
 
-/* Tab Widget */
-QTabWidget::pane {
-    border: 1px solid #2b2d31;
-    background-color: #1e1f22;
-    border-radius: 6px;
-    top: -1px;
+/* ---- Sidebar: Discord channel list ------------------------------------ */
+QFrame#sidebar {
+    background-color: BASE;
+    border-right: 1px solid HAIRLINE;
 }
 
-QTabBar::tab {
-    background-color: #2b2d31;
-    color: #949ba4;
-    padding: 10px 18px;
-    margin-right: 4px;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
+QLabel#sidebarHeader {
+    color: TEXT_STRONG;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 0 16px;
+    min-height: 48px;
+    max-height: 48px;
+    border-bottom: 1px solid HAIRLINE;
+}
+
+QLabel#sidebarSection {
+    color: TEXT_MUTED;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    padding: 18px 16px 6px 16px;
+}
+
+QListWidget#nav {
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 0 8px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+QListWidget#nav::item {
+    color: TEXT_MUTED;
+    padding: 7px 8px;
+    margin: 1px 0;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+}
+
+QListWidget#nav::item:hover {
+    background-color: RAISED;
+    color: TEXT;
+}
+
+QListWidget#nav::item:selected {
+    background-color: SELECTED;
+    color: #ffffff;
+    border-left: 3px solid BLURPLE;
+}
+
+/* Pinned status panel: Discord's bottom-left user panel */
+QFrame#statusPanel {
+    background-color: CARD;
+    border-top: 1px solid HAIRLINE;
+}
+
+QLabel#statusAvatar {
+    background-color: BLURPLE;
+    color: #ffffff;
+    border-radius: 17px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+QLabel#statusDot {
+    border-radius: 7px;
+    border: 3px solid CARD;
+}
+
+QLabel#statusName {
+    color: TEXT_STRONG;
+    font-size: 13px;
     font-weight: 600;
 }
 
-QTabBar::tab:hover {
-    background-color: #35373c;
-    color: #dbdee1;
+QLabel#statusState {
+    color: TEXT_MUTED;
+    font-size: 12px;
 }
 
-QTabBar::tab:selected {
-    background-color: #1e1f22;
-    color: #5865f2;
-    border-bottom: 2px solid #5865f2;
+/* ---- Cards ------------------------------------------------------------- */
+QFrame.card {
+    background-color: CARD;
+    border: none;
+    border-radius: 8px;
 }
 
-/* Push Buttons */
-QPushButton {
-    background-color: #4e5058;
-    color: #ffffff;
+QLabel.cardTitle {
+    color: TEXT_MUTED;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+}
+
+/* Recessed wells inside cards (tool rows, editors, composers) */
+QFrame.inset {
+    background-color: INSET;
     border: none;
     border-radius: 6px;
-    padding: 8px 16px;
-    font-weight: 600;
+}
+
+/* Inputs inside a well sink one level further so they stay visible */
+QFrame.inset QLineEdit, QFrame.inset QTextEdit, QFrame.inset QPlainTextEdit,
+QFrame.inset QComboBox, QFrame.inset QSpinBox, QFrame.inset QTextBrowser {
+    background-color: WELL;
+}
+
+QTableWidget QPushButton { padding: 4px 12px; }
+
+QFrame.replyBanner {
+    background-color: INSET;
+    border-left: 3px solid BLURPLE;
+    border-radius: 4px;
+}
+
+/* ---- Buttons ----------------------------------------------------------- */
+QPushButton {
+    background-color: GREY_BTN;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 7px 16px;
+    font-weight: 500;
     font-size: 13px;
-    min-height: 20px;
+    min-height: 18px;
 }
 
-QPushButton:hover {
-    background-color: #6d6f78;
-}
-
-QPushButton:pressed {
-    background-color: #404249;
-}
+QPushButton:hover { background-color: GREY_BTN_HOVER; }
+QPushButton:pressed { background-color: SELECTED; }
 
 QPushButton:disabled {
-    background-color: #2b2d31;
-    color: #5c5e66;
-    border: 1px solid #35373c;
+    background-color: RAISED;
+    color: TEXT_FAINT;
 }
 
-/* Primary Action Button */
-QPushButton.primary {
-    background-color: #5865f2;
-    color: #ffffff;
+QPushButton.primary { background-color: BLURPLE; }
+QPushButton.primary:hover { background-color: BLURPLE_HOVER; }
+QPushButton.primary:pressed { background-color: BLURPLE_PRESSED; }
+QPushButton.primary:disabled { background-color: RAISED; color: TEXT_FAINT; }
+
+QPushButton.success { background-color: GREEN; }
+QPushButton.success:hover { background-color: #1a8a4a; }
+QPushButton.success:disabled { background-color: RAISED; color: TEXT_FAINT; }
+
+QPushButton.danger { background-color: RED; }
+QPushButton.danger:hover { background-color: RED_HOVER; }
+QPushButton.danger:disabled { background-color: RAISED; color: TEXT_FAINT; }
+
+/* ---- Inputs: sunk below the card --------------------------------------- */
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QTextBrowser {
+    background-color: INSET;
+    color: TEXT;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 7px 10px;
 }
 
-QPushButton.primary:hover {
-    background-color: #4752c4;
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 1px solid BLURPLE;
 }
 
-QPushButton.primary:pressed {
-    background-color: #3c45a5;
+QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {
+    color: TEXT_FAINT;
 }
 
-/* Success Button */
-QPushButton.success {
-    background-color: #23a55a;
-    color: #ffffff;
-}
-
-QPushButton.success:hover {
-    background-color: #1f9450;
-}
-
-/* Danger Button */
-QPushButton.danger {
-    background-color: #da373c;
-    color: #ffffff;
-}
-
-QPushButton.danger:hover {
-    background-color: #c03135;
-}
-
-/* Line Inputs & Text Boxes */
-QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox {
-    background-color: #111214;
-    color: #dbdee1;
-    border: 1px solid #35373c;
-    border-radius: 6px;
-    padding: 8px 10px;
-    selection-background-color: #5865f2;
-}
-
-QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
-    border: 1px solid #5865f2;
-}
-
-/* ComboBox Styling with Explicit Dropdown Arrow */
 QComboBox {
-    background-color: #111214;
-    color: #dbdee1;
-    border: 1px solid #35373c;
-    border-radius: 6px;
+    background-color: INSET;
+    color: TEXT;
+    border: 1px solid transparent;
+    border-radius: 4px;
     padding: 6px 10px;
     min-height: 20px;
-    selection-background-color: #5865f2;
 }
 
-QComboBox:hover, QComboBox:focus {
-    border: 1px solid #5865f2;
-}
+QComboBox:hover, QComboBox:focus { border: 1px solid BLURPLE; }
 
 QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: top right;
-    width: 28px;
-    border-left: 1px solid #35373c;
-    border-top-right-radius: 6px;
-    border-bottom-right-radius: 6px;
-    background-color: #2b2d31;
+    width: 26px;
+    border: none;
 }
 
-QComboBox::drop-down:hover {
-    background-color: #404249;
-}
+QComboBox::down-arrow { image: url(CHEVRON_DOWN); width: 12px; height: 12px; }
 
-QComboBox::down-arrow {
-    width: 0;
-    height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #dbdee1;
-    margin: auto;
+QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
+    subcontrol-origin: border;
+    width: 20px;
+    border: none;
+    background: transparent;
 }
+QAbstractSpinBox::up-button { subcontrol-position: top right; }
+QAbstractSpinBox::down-button { subcontrol-position: bottom right; }
+QAbstractSpinBox::up-arrow { image: url(CHEVRON_UP); width: 10px; height: 10px; }
+QAbstractSpinBox::down-arrow { image: url(CHEVRON_DOWN); width: 10px; height: 10px; }
+QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover { background: RAISED; border-radius: 3px; }
 
-QComboBox::down-arrow:hover {
-    border-top: 6px solid #ffffff;
+/* Discord-style checkbox: rounded square, Blurple when checked */
+QCheckBox { spacing: 8px; }
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border: 1px solid TEXT_FAINT;
+    border-radius: 4px;
+    background: INSET;
 }
+QCheckBox::indicator:hover { border-color: TEXT_MUTED; }
+QCheckBox::indicator:checked { background: BLURPLE; border-color: BLURPLE; image: url(CHECK_MARK); }
+QCheckBox::indicator:disabled { background: RAISED; border-color: RAISED; }
 
-/* Dropdown Popup List */
 QComboBox QAbstractItemView {
-    background-color: #1e1f22;
-    color: #dbdee1;
-    border: 1px solid #35373c;
-    border-radius: 6px;
+    background-color: CARD;
+    color: TEXT;
+    border: 1px solid HAIRLINE;
+    border-radius: 4px;
     padding: 4px;
-    selection-background-color: #5865f2;
-    selection-color: #ffffff;
     outline: none;
 }
 
-QComboBox QAbstractItemView::item {
-    min-height: 26px;
-    padding: 4px 8px;
+QComboBox QAbstractItemView::item { min-height: 26px; padding: 4px 8px; border-radius: 3px; }
+QComboBox QAbstractItemView::item:hover { background-color: RAISED; }
+QComboBox QAbstractItemView::item:selected { background-color: BLURPLE; color: #ffffff; }
+
+/* ---- Sliders ----------------------------------------------------------- */
+QSlider::groove:horizontal { height: 6px; background: GREY_BTN; border-radius: 3px; }
+QSlider::sub-page:horizontal { background: BLURPLE; border-radius: 3px; }
+QSlider::handle:horizontal {
+    background: #ffffff;
+    width: 14px;
+    height: 14px;
+    margin: -4px 0;
+    border-radius: 7px;
+}
+QSlider::groove:horizontal:disabled, QSlider::sub-page:horizontal:disabled { background: RAISED; }
+
+/* ---- Tables & lists inside cards --------------------------------------- */
+QTableWidget, QListWidget {
+    background-color: INSET;
+    border: none;
     border-radius: 4px;
+    gridline-color: HAIRLINE;
 }
 
-QComboBox QAbstractItemView::item:hover {
-    background-color: #2b2d31;
+QHeaderView::section {
+    background-color: CARD;
+    color: TEXT_MUTED;
+    border: none;
+    padding: 6px 8px;
+    font-size: 11px;
+    font-weight: 700;
 }
 
-QComboBox QAbstractItemView::item:selected {
-    background-color: #5865f2;
-    color: #ffffff;
+/* ---- Labels ------------------------------------------------------------ */
+QLabel.muted { color: TEXT_MUTED; font-size: 12px; }
+QLabel.heading { font-size: 16px; font-weight: 600; color: TEXT_STRONG; }
+
+/* ---- Menus, tooltips, splitters, scrollbars ---------------------------- */
+QMenu {
+    background-color: WELL;
+    border: 1px solid HAIRLINE;
+    border-radius: 4px;
+    padding: 6px;
+}
+QMenu::item { padding: 6px 12px; border-radius: 3px; }
+QMenu::item:selected { background-color: BLURPLE; color: #ffffff; }
+
+QToolTip {
+    background-color: WELL;
+    color: TEXT;
+    border: none;
+    padding: 6px 8px;
 }
 
-/* Labels */
-QLabel {
-    color: #dbdee1;
-}
+QSplitter::handle { background: transparent; }
 
-QLabel.muted {
-    color: #949ba4;
+QScrollBar:vertical { background: transparent; width: 8px; margin: 2px; }
+QScrollBar::handle:vertical { background-color: WELL; min-height: 24px; border-radius: 4px; }
+QScrollBar::handle:vertical:hover { background-color: GREY_BTN; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
+
+QStatusBar {
+    background-color: BASE;
+    color: TEXT_MUTED;
+    border-top: 1px solid HAIRLINE;
     font-size: 12px;
 }
-
-QLabel.heading {
-    font-size: 16px;
-    font-weight: bold;
-    color: #ffffff;
-}
-
-/* Scrollbars */
-QScrollBar:vertical {
-    background-color: #1e1f22;
-    width: 10px;
-    margin: 0;
-    border-radius: 5px;
-}
-
-QScrollBar::handle:vertical {
-    background-color: #2b2d31;
-    min-height: 24px;
-    border-radius: 5px;
-}
-
-QScrollBar::handle:vertical:hover {
-    background-color: #4e5058;
-}
-
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-    height: 0px;
-}
-
-/* Status Bar */
-QStatusBar {
-    background-color: #111214;
-    color: #949ba4;
-    border-top: 1px solid #2b2d31;
-    padding: 4px;
-}
 """
+
+# Longest token names first so e.g. BLURPLE_HOVER isn't clobbered by BLURPLE.
+DARK_THEME_QSS = _QSS
+_values = {**TOKENS, **_icon_urls()}
+for _name in sorted(_values, key=len, reverse=True):
+    DARK_THEME_QSS = DARK_THEME_QSS.replace(_name, _values[_name])

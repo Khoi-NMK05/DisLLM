@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
     QGridLayout,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -27,6 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from gui.widgets import Card, StatusLabel
 from bot.config import BotConfig
 from bot.runner import BotRunner, BotState
 
@@ -52,12 +52,12 @@ class DashboardTab(QWidget):
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(14)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
 
         # Top section: 2 columns (Credentials & Controls)
         top_row = QHBoxLayout()
-        top_row.setSpacing(14)
+        top_row.setSpacing(16)
 
         top_row.addWidget(self._create_credentials_card(), stretch=1)
         top_row.addWidget(self._create_controls_card(), stretch=1)
@@ -66,9 +66,9 @@ class DashboardTab(QWidget):
         # Bottom section: Real-time Live Log Stream
         layout.addWidget(self._create_logs_card(), stretch=1)
 
-    def _create_credentials_card(self) -> QGroupBox:
-        group = QGroupBox("Bot Authentication & Gateway")
-        layout = QVBoxLayout(group)
+    def _create_credentials_card(self) -> Card:
+        group = Card("Bot Authentication & Gateway")
+        layout = group.body
         layout.setSpacing(10)
 
         desc = QLabel("Enter your Discord Bot Token to authenticate. Tokens are saved locally to your .env file.")
@@ -82,8 +82,7 @@ class DashboardTab(QWidget):
         self.token_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.token_input.setText(self.config.discord_token)
 
-        self.toggle_show_btn = QPushButton("👁 Show")
-        self.toggle_show_btn.setFixedWidth(75)
+        self.toggle_show_btn = QPushButton("Show")
         self.toggle_show_btn.clicked.connect(self._toggle_token_visibility)
 
         token_row.addWidget(self.token_input)
@@ -102,16 +101,16 @@ class DashboardTab(QWidget):
         actions_row.addStretch()
         layout.addLayout(actions_row)
 
-        self.token_status_label = QLabel("")
+        self.token_status_label = StatusLabel("")
         self.token_status_label.setWordWrap(True)
         layout.addWidget(self.token_status_label)
         layout.addStretch()
 
         return group
 
-    def _create_controls_card(self) -> QGroupBox:
-        group = QGroupBox("Bot Status & Control")
-        layout = QVBoxLayout(group)
+    def _create_controls_card(self) -> Card:
+        group = Card("Bot Status & Control")
+        layout = group.body
         layout.setSpacing(10)
 
         # Status badge row
@@ -131,16 +130,16 @@ class DashboardTab(QWidget):
 
         # Control buttons
         btn_row = QHBoxLayout()
-        self.start_btn = QPushButton("▶ Start Bot")
+        self.start_btn = QPushButton("Start Bot")
         self.start_btn.setProperty("class", "primary")
         self.start_btn.clicked.connect(self._on_start_clicked)
 
-        self.stop_btn = QPushButton("⏹ Stop Bot")
+        self.stop_btn = QPushButton("Stop Bot")
         self.stop_btn.setProperty("class", "danger")
         self.stop_btn.setEnabled(False)
         self.stop_btn.clicked.connect(self._on_stop_clicked)
 
-        self.restart_btn = QPushButton("🔄 Restart")
+        self.restart_btn = QPushButton("Restart")
         self.restart_btn.setEnabled(False)
         self.restart_btn.clicked.connect(self._on_restart_clicked)
 
@@ -175,9 +174,9 @@ class DashboardTab(QWidget):
 
         return group
 
-    def _create_logs_card(self) -> QGroupBox:
-        group = QGroupBox("Live Activity & Event Stream")
-        layout = QVBoxLayout(group)
+    def _create_logs_card(self) -> Card:
+        group = Card("Live Activity & Event Stream")
+        layout = group.body
         layout.setSpacing(8)
 
         # Filter bar
@@ -196,11 +195,9 @@ class DashboardTab(QWidget):
         bar_row.addStretch()
 
         clear_btn = QPushButton("Clear")
-        clear_btn.setFixedWidth(65)
         clear_btn.clicked.connect(self._clear_logs)
 
         copy_btn = QPushButton("Copy All")
-        copy_btn.setFixedWidth(80)
         copy_btn.clicked.connect(self._copy_logs)
 
         bar_row.addWidget(clear_btn)
@@ -209,9 +206,10 @@ class DashboardTab(QWidget):
 
         # Log text area
         self.log_view = QPlainTextEdit()
+        self.log_view.setPlaceholderText("Bot activity and logs will stream here once you start the bot.")
         self.log_view.setReadOnly(True)
         self.log_view.setStyleSheet(
-            "background-color: #111214; color: #dbdee1; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px;"
+            "font-family: 'Consolas', 'Courier New', monospace; font-size: 12px;"
         )
         layout.addWidget(self.log_view)
 
@@ -220,21 +218,21 @@ class DashboardTab(QWidget):
     def _toggle_token_visibility(self) -> None:
         if self.token_input.echoMode() == QLineEdit.EchoMode.Password:
             self.token_input.setEchoMode(QLineEdit.EchoMode.Normal)
-            self.toggle_show_btn.setText("🔒 Hide")
+            self.toggle_show_btn.setText("Hide")
         else:
             self.token_input.setEchoMode(QLineEdit.EchoMode.Password)
-            self.toggle_show_btn.setText("👁 Show")
+            self.toggle_show_btn.setText("Show")
 
     def _on_save_token_clicked(self) -> None:
         new_token = self.token_input.text().strip()
         self.config.save_token(new_token)
-        self.token_status_label.setText("✅ Token saved to local environment.")
+        self.token_status_label.setText("Token saved to local environment.")
         self.token_status_label.setStyleSheet("color: #23a55a;")
 
     def _on_test_token_clicked(self) -> None:
         token = self.token_input.text().strip()
         if not token:
-            self.token_status_label.setText("⚠️ Token is empty. Please enter a token.")
+            self.token_status_label.setText("Token is empty. Please enter a token.")
             self.token_status_label.setStyleSheet("color: #f0b232;")
             return
 
@@ -248,13 +246,13 @@ class DashboardTab(QWidget):
                 await client.login(token)
                 name = client.user.name if client.user else "Unknown"
                 discrim = client.user.discriminator if client.user else "0000"
-                self.token_status_label.setText(f"✅ Success! Token valid for bot: @{name}#{discrim}")
+                self.token_status_label.setText(f"Success! Token valid for bot: @{name}#{discrim}")
                 self.token_status_label.setStyleSheet("color: #23a55a;")
             except discord.LoginFailure:
-                self.token_status_label.setText("❌ Login Failed: Invalid token provided.")
+                self.token_status_label.setText("Login Failed: Invalid token provided.")
                 self.token_status_label.setStyleSheet("color: #da373c;")
             except Exception as err:
-                self.token_status_label.setText(f"❌ Connection Error: {err}")
+                self.token_status_label.setText(f"Connection Error: {err}")
                 self.token_status_label.setStyleSheet("color: #da373c;")
             finally:
                 await client.close()
@@ -265,7 +263,7 @@ class DashboardTab(QWidget):
     def _on_start_clicked(self) -> None:
         token = self.token_input.text().strip()
         if not token:
-            self.token_status_label.setText("⚠️ Please provide a valid bot token before starting.")
+            self.token_status_label.setText("Please provide a valid bot token before starting.")
             self.token_status_label.setStyleSheet("color: #f0b232;")
             return
 
@@ -296,6 +294,10 @@ class DashboardTab(QWidget):
         elif state == BotState.CONNECTING:
             self.start_btn.setEnabled(False)
             self.stop_btn.setEnabled(True)
+            self.restart_btn.setEnabled(False)
+        elif state == BotState.STOPPING:
+            self.start_btn.setEnabled(False)
+            self.stop_btn.setEnabled(False)
             self.restart_btn.setEnabled(False)
         elif state in (BotState.DISCONNECTED, BotState.ERROR):
             self.start_btn.setEnabled(True)
