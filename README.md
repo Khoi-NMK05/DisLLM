@@ -18,8 +18,8 @@ The bot runs on your own machine. With a local model and web search off, no mess
 **Models**
 - **Local:** Ollama, LM Studio, llama.cpp, or any local OpenAI-compatible server.
 - **Cloud:** OpenAI, OpenRouter, Groq, Google Gemini, or a custom endpoint.
-- Change the provider, model and sampling settings (temperature, top-p, min-p, repeat penalty, context size) from the desktop app. Changes apply while the bot runs, except a new Ollama host, which needs a restart.
-- Pull Ollama models or register a local `.gguf` file from inside the app.
+- Change the provider, model and sampling settings (temperature, top-p, min-p, repeat penalty, context size) on the app's **AI Model & Persona** page. Each setting has a plain-language name and a tooltip that explains it. Changes apply while the bot runs, except a new Ollama host, which needs a restart.
+- Download Ollama models (the same as `ollama pull`) or import a local `.gguf` file from inside the app.
 
 **Vision**
 - Image attachments are described by a separate vision model (for example `qwen2.5vl` or `moondream`), which also reads text in images.
@@ -32,7 +32,7 @@ The bot runs on your own machine. With a local model and web search off, no mess
 - The bot is told today's date, so "latest" and "this week" mean the right thing.
 
 **Customization**
-- **Personas:** edit the system prompt, choose a built-in preset, or save your own prompts as presets (stored in `data/personas.json`). The default persona is a playful "tsundere" character; replace it with whatever fits your server.
+- **Personas:** on the **AI Model & Persona** page, pick a built-in persona or write and save your own (stored in `data/personas.json`). The default persona is a playful "tsundere" character; replace it with whatever fits your server.
 - **No-code slash commands:** create AI prompt shortcuts, static replies or embed cards from the app, and sync them to Discord in one click.
 - **Plugins:** drop a standard `discord.py` cog into `plugins/`, then load, unload or reload it while the bot is running.
 
@@ -167,7 +167,7 @@ Chat with the bot by mentioning it or sending it a DM. The commands below work b
 
 ## Writing a plugin
 
-Plugins are ordinary [`discord.py` cogs](https://discordpy.readthedocs.io/en/stable/ext/commands/cogs.html). Save a file in `plugins/` and load it from **Commands & Personas** in the app:
+Plugins are ordinary [`discord.py` cogs](https://discordpy.readthedocs.io/en/stable/ext/commands/cogs.html). Save a file in `plugins/` and load it from **Commands & Plugins** in the app:
 
 ```python
 # plugins/hello.py
@@ -217,7 +217,7 @@ Plugins run with the same permissions as the bot. Only install plugins you trust
 │   ├── main_window.py      # Window, sidebar navigation, system tray
 │   ├── theme.py            # Stylesheet and design tokens
 │   ├── widgets.py          # Shared UI components
-│   └── tabs/               # Dashboard, Bot & Servers, AI Engine, Commands, Moderation
+│   └── tabs/               # Dashboard, Bot & Servers, AI Model & Persona, Commands & Plugins, Moderation
 ├── plugins/                # Your custom cogs
 ├── data/                   # Database and saved settings (created on first run)
 └── tests/                  # Unit tests

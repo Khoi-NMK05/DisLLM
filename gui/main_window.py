@@ -161,8 +161,8 @@ class MainWindow(QMainWindow):
         pages = [
             (self.dashboard_tab, "Dashboard"),
             (self.bot_control_tab, "Bot & Multi-Server"),
-            (self.ai_models_tab, "AI Engine & Models"),
-            (self.commands_tab, "Commands & Personas"),
+            (self.ai_models_tab, "AI Model & Persona"),
+            (self.commands_tab, "Commands & Plugins"),
             (self.settings_tab, "Moderation & Settings"),
         ]
         for page, _ in pages:

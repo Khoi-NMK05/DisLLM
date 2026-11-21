@@ -1,0 +1,593 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-21T10:37:08.565551+00:00",
+  "title": "Design System: Discord AI Companion",
+  "extensions": {
+    "colorMeta": {
+      "blurple": {
+        "role": "primary",
+        "displayName": "Blurple",
+        "canonical": "#5865f2",
+        "tonalRamp": [
+          "#0d1030",
+          "#151c65",
+          "#17239f",
+          "#1425df",
+          "#4754e9",
+          "#838ce8",
+          "#babfee",
+          "#ecedf9"
+        ]
+      },
+      "blurple-hover": {
+        "role": "primary",
+        "displayName": "Blurple Hover",
+        "canonical": "#4752c4",
+        "tonalRamp": [
+          "#141629",
+          "#252955",
+          "#323984",
+          "#3c47b6",
+          "#676fc8",
+          "#979dd4",
+          "#c4c7e4",
+          "#eeeff6"
+        ]
+      },
+      "blurple-pressed": {
+        "role": "primary",
+        "displayName": "Blurple Pressed",
+        "canonical": "#3c45a5",
+        "tonalRamp": [
+          "#151728",
+          "#272b53",
+          "#363c80",
+          "#424bb1",
+          "#6b73c4",
+          "#9a9fd1",
+          "#c6c8e2",
+          "#efeff6"
+        ]
+      },
+      "base": {
+        "role": "neutral",
+        "displayName": "Channel-List Charcoal",
+        "canonical": "#1e1f22",
+        "tonalRamp": [
+          "#1d1e20",
+          "#3a3b40",
+          "#565960",
+          "#727681",
+          "#92959d",
+          "#b2b4b9",
+          "#d2d3d6",
+          "#f2f2f3"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Card Slate",
+        "canonical": "#2b2d31",
+        "tonalRamp": [
+          "#1d1e20",
+          "#3a3c40",
+          "#565960",
+          "#727781",
+          "#91959e",
+          "#b2b4ba",
+          "#d2d3d6",
+          "#f2f2f3"
+        ]
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Hover Slate",
+        "canonical": "#35373c",
+        "tonalRamp": [
+          "#1d1e20",
+          "#3a3c40",
+          "#565960",
+          "#727681",
+          "#92959d",
+          "#b2b4b9",
+          "#d2d3d6",
+          "#f2f2f3"
+        ]
+      },
+      "selected": {
+        "role": "neutral",
+        "displayName": "Selected Slate",
+        "canonical": "#404249",
+        "tonalRamp": [
+          "#1d1e20",
+          "#3a3b40",
+          "#565860",
+          "#727581",
+          "#91949e",
+          "#b2b4ba",
+          "#d2d3d6",
+          "#f2f2f3"
+        ]
+      },
+      "inset": {
+        "role": "neutral",
+        "displayName": "Inset",
+        "canonical": "#1e1f22",
+        "tonalRamp": [
+          "#1d1e20",
+          "#3a3b40",
+          "#565960",
+          "#727681",
+          "#92959d",
+          "#b2b4b9",
+          "#d2d3d6",
+          "#f2f2f3"
+        ]
+      },
+      "well": {
+        "role": "neutral",
+        "displayName": "Deep Well",
+        "canonical": "#111214",
+        "tonalRamp": [
+          "#1d1e20",
+          "#393c41",
+          "#555962",
+          "#707683",
+          "#90959f",
+          "#b1b4bb",
+          "#d2d3d6",
+          "#f2f2f3"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "rgba(255, 255, 255, 0.06)"
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Text",
+        "canonical": "#dbdee1",
+        "tonalRamp": [
+          "#1d1f20",
+          "#393d41",
+          "#545b62",
+          "#6f7984",
+          "#8f98a0",
+          "#b0b6bb",
+          "#d1d4d7",
+          "#f2f2f3"
+        ]
+      },
+      "text-strong": {
+        "role": "neutral",
+        "displayName": "Strong Text",
+        "canonical": "#f2f3f5",
+        "tonalRamp": [
+          "#1c1e21",
+          "#373b43",
+          "#515865",
+          "#6a7489",
+          "#8b93a4",
+          "#aeb3bd",
+          "#d0d3d8",
+          "#f1f2f3"
+        ]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Muted Text",
+        "canonical": "#949ba4",
+        "tonalRamp": [
+          "#1d1e20",
+          "#393c41",
+          "#555a61",
+          "#707883",
+          "#90979f",
+          "#b1b5bb",
+          "#d2d4d6",
+          "#f2f2f3"
+        ]
+      },
+      "text-faint": {
+        "role": "neutral",
+        "displayName": "Faint Text",
+        "canonical": "#6d6f78",
+        "tonalRamp": [
+          "#1e1e20",
+          "#3b3b3f",
+          "#57595f",
+          "#74767f",
+          "#93959c",
+          "#b3b4b9",
+          "#d3d3d5",
+          "#f2f2f3"
+        ]
+      },
+      "on-accent": {
+        "role": "neutral",
+        "displayName": "On Accent White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#1f1f1f",
+          "#3d3d3d",
+          "#5b5b5b",
+          "#797979",
+          "#989898",
+          "#b6b6b6",
+          "#d4d4d4",
+          "#f2f2f2"
+        ]
+      },
+      "grey-button": {
+        "role": "neutral",
+        "displayName": "Grey Button",
+        "canonical": "#4e5058",
+        "tonalRamp": [
+          "#1d1e20",
+          "#3a3b40",
+          "#565860",
+          "#727580",
+          "#92949d",
+          "#b2b4b9",
+          "#d2d3d6",
+          "#f2f2f3"
+        ]
+      },
+      "grey-button-hover": {
+        "role": "neutral",
+        "displayName": "Grey Button Hover",
+        "canonical": "#6d6f78",
+        "tonalRamp": [
+          "#1e1e20",
+          "#3b3b3f",
+          "#57595f",
+          "#74767f",
+          "#93959c",
+          "#b3b4b9",
+          "#d3d3d5",
+          "#f2f2f3"
+        ]
+      },
+      "success": {
+        "role": "status",
+        "displayName": "Success Green",
+        "canonical": "#23a55a",
+        "tonalRamp": [
+          "#122c1d",
+          "#1f5b38",
+          "#278f53",
+          "#2cc66d",
+          "#5ad58e",
+          "#8fdcb0",
+          "#c0e8d1",
+          "#edf7f1"
+        ]
+      },
+      "success-hover": {
+        "role": "status",
+        "displayName": "Success Green Hover",
+        "canonical": "#1a8a4a",
+        "tonalRamp": [
+          "#112c1d",
+          "#1d5d38",
+          "#259153",
+          "#28ca6e",
+          "#57d88e",
+          "#8ddeb0",
+          "#bfe9d1",
+          "#edf7f2"
+        ]
+      },
+      "danger": {
+        "role": "status",
+        "displayName": "Danger Red",
+        "canonical": "#da373c",
+        "tonalRamp": [
+          "#2c1112",
+          "#5d1d1f",
+          "#922428",
+          "#cb282d",
+          "#d9565a",
+          "#de8d90",
+          "#e9bfc1",
+          "#f7eded"
+        ]
+      },
+      "danger-hover": {
+        "role": "status",
+        "displayName": "Danger Red Hover",
+        "canonical": "#a12828",
+        "tonalRamp": [
+          "#2b1212",
+          "#592121",
+          "#8b2b2b",
+          "#c13232",
+          "#d15f5f",
+          "#d99292",
+          "#e6c2c2",
+          "#f7eeee"
+        ]
+      },
+      "text-success": {
+        "role": "status",
+        "displayName": "Success Text",
+        "canonical": "#2dc770",
+        "tonalRamp": [
+          "#122b1d",
+          "#1f5a39",
+          "#298d55",
+          "#2ec470",
+          "#5cd390",
+          "#90dbb1",
+          "#c1e7d2",
+          "#edf7f2"
+        ]
+      },
+      "text-warning": {
+        "role": "status",
+        "displayName": "Warning Text",
+        "canonical": "#f0b232",
+        "tonalRamp": [
+          "#30250d",
+          "#654b15",
+          "#a07317",
+          "#e09d13",
+          "#e9b446",
+          "#e9c883",
+          "#eeddba",
+          "#f9f5ec"
+        ]
+      },
+      "text-danger": {
+        "role": "status",
+        "displayName": "Danger Text",
+        "canonical": "#fa777c",
+        "tonalRamp": [
+          "#310c0d",
+          "#681215",
+          "#a51117",
+          "#e80b13",
+          "#f04046",
+          "#ed7f83",
+          "#f0b8ba",
+          "#f9ebec"
+        ]
+      },
+      "presence-online": {
+        "role": "status",
+        "displayName": "Presence Online",
+        "canonical": "#23a55a",
+        "tonalRamp": [
+          "#122c1d",
+          "#1f5b38",
+          "#278f53",
+          "#2cc66d",
+          "#5ad58e",
+          "#8fdcb0",
+          "#c0e8d1",
+          "#edf7f1"
+        ]
+      },
+      "presence-idle": {
+        "role": "status",
+        "displayName": "Presence Connecting",
+        "canonical": "#f0b232",
+        "tonalRamp": [
+          "#30250d",
+          "#654b15",
+          "#a07317",
+          "#e09d13",
+          "#e9b446",
+          "#e9c883",
+          "#eeddba",
+          "#f9f5ec"
+        ]
+      },
+      "presence-error": {
+        "role": "status",
+        "displayName": "Presence Error",
+        "canonical": "#f23f43",
+        "tonalRamp": [
+          "#300d0e",
+          "#651416",
+          "#a01619",
+          "#e11216",
+          "#ea4549",
+          "#e98284",
+          "#eebabb",
+          "#f9ecec"
+        ]
+      },
+      "presence-offline": {
+        "role": "status",
+        "displayName": "Presence Offline",
+        "canonical": "#80848e",
+        "tonalRamp": [
+          "#1d1e20",
+          "#3a3c40",
+          "#565960",
+          "#727680",
+          "#92959d",
+          "#b2b4b9",
+          "#d2d3d6",
+          "#f2f2f3"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "In-page headings (QLabel.heading)."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Sidebar app header."
+      },
+      "nav": {
+        "displayName": "Nav",
+        "purpose": "Sidebar nav items."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default text, buttons (at 500), inputs, form labels."
+      },
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "Muted helper text, status bar, bot state."
+      },
+      "label": {
+        "displayName": "Card Label",
+        "purpose": "Uppercase card headers."
+      },
+      "label-small": {
+        "displayName": "Section Label",
+        "purpose": "Sidebar section label and table headers."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Log console only."
+      }
+    },
+    "shadows": [],
+    "motion": []
+  },
+  "components": [
+    {
+      "name": "Default Button",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "Grey secondary button for most actions.",
+      "html": "<button class=\"ds-btn\">Refresh Models</button>",
+      "css": ".ds-btn{font-family:\"Segoe UI\",\"gg sans\",\"Helvetica Neue\",Arial,sans-serif;background:#4e5058;color:#fff;border:none;border-radius:4px;padding:7px 16px;font-size:13px;font-weight:500;cursor:pointer;} .ds-btn:hover{background:#6d6f78;} .ds-btn:active{background:#404249;} .ds-btn:focus-visible{outline:2px solid #5865f2;outline-offset:2px;} .ds-btn:disabled{background:#35373c;color:#6d6f78;cursor:default;}"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Blurple button for the one main action on a card.",
+      "html": "<button class=\"ds-btn-primary\">Save Token</button>",
+      "css": ".ds-btn-primary{font-family:\"Segoe UI\",\"gg sans\",\"Helvetica Neue\",Arial,sans-serif;background:#5865f2;color:#fff;border:none;border-radius:4px;padding:7px 16px;font-size:13px;font-weight:500;cursor:pointer;} .ds-btn-primary:hover{background:#4752c4;} .ds-btn-primary:active{background:#3c45a5;} .ds-btn-primary:focus-visible{outline:2px solid #5865f2;outline-offset:2px;} .ds-btn-primary:disabled{background:#35373c;color:#6d6f78;cursor:default;}"
+    },
+    {
+      "name": "Success Button",
+      "kind": "button",
+      "refersTo": "button-success",
+      "description": "Green button for starting things, such as Start Bot.",
+      "html": "<button class=\"ds-btn-success\">Start Bot</button>",
+      "css": ".ds-btn-success{font-family:\"Segoe UI\",\"gg sans\",\"Helvetica Neue\",Arial,sans-serif;background:#23a55a;color:#fff;border:none;border-radius:4px;padding:7px 16px;font-size:13px;font-weight:500;cursor:pointer;} .ds-btn-success:hover{background:#1a8a4a;} .ds-btn-success:active{background:#1a8a4a;} .ds-btn-success:focus-visible{outline:2px solid #5865f2;outline-offset:2px;} .ds-btn-success:disabled{background:#35373c;color:#6d6f78;cursor:default;}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Red button for destructive actions; always confirm first.",
+      "html": "<button class=\"ds-btn-danger\">Wipe Database</button>",
+      "css": ".ds-btn-danger{font-family:\"Segoe UI\",\"gg sans\",\"Helvetica Neue\",Arial,sans-serif;background:#da373c;color:#fff;border:none;border-radius:4px;padding:7px 16px;font-size:13px;font-weight:500;cursor:pointer;} .ds-btn-danger:hover{background:#a12828;} .ds-btn-danger:active{background:#a12828;} .ds-btn-danger:focus-visible{outline:2px solid #5865f2;outline-offset:2px;} .ds-btn-danger:disabled{background:#35373c;color:#6d6f78;cursor:default;}"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Inset field sunk below its card; Blurple border on focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"qwen3.5:9b\">",
+      "css": ".ds-input{font-family:\"Segoe UI\",\"gg sans\",\"Helvetica Neue\",Arial,sans-serif;background:#1e1f22;color:#dbdee1;border:1px solid transparent;border-radius:4px;padding:7px 10px;font-size:13px;outline:none;} .ds-input::placeholder{color:#6d6f78;} .ds-input:focus,.ds-input:focus-visible{border-color:#5865f2;} .ds-input:disabled{color:#6d6f78;}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat settings card with an uppercase muted header; no border, no shadow.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">MODEL SETTINGS</div><div class=\"ds-card-body\">Temperature, top-p and context size live here.</div></div>",
+      "css": ".ds-card{font-family:\"Segoe UI\",\"gg sans\",\"Helvetica Neue\",Arial,sans-serif;background:#2b2d31;border-radius:8px;padding:14px 16px 16px;color:#dbdee1;font-size:13px;max-width:360px;} .ds-card-title{color:#949ba4;font-size:12px;font-weight:700;letter-spacing:0.4px;margin-bottom:12px;}"
+    },
+    {
+      "name": "Sidebar Nav",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Discord channel-list navigation; the selected item gets a 3px Blurple left edge.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-nav-section\">CONTROL CENTER</div><a class=\"ds-nav-item is-selected\" href=\"#\"># Dashboard</a><a class=\"ds-nav-item\" href=\"#\"># Bot Control</a><a class=\"ds-nav-item\" href=\"#\"># AI Models</a></nav>",
+      "css": ".ds-nav{font-family:\"Segoe UI\",\"gg sans\",\"Helvetica Neue\",Arial,sans-serif;background:#1e1f22;padding:0 8px 8px;width:220px;} .ds-nav-section{color:#949ba4;font-size:11px;font-weight:700;letter-spacing:0.4px;padding:18px 8px 6px;} .ds-nav-item{display:block;color:#949ba4;text-decoration:none;font-size:14px;font-weight:500;padding:7px 8px;margin:1px 0;border-radius:4px;border-left:3px solid transparent;} .ds-nav-item:hover{background:#35373c;color:#dbdee1;} .ds-nav-item:focus-visible{outline:2px solid #5865f2;outline-offset:-2px;} .ds-nav-item.is-selected{background:#404249;color:#fff;border-left-color:#5865f2;}"
+    },
+    {
+      "name": "Checkbox",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "18px rounded square; Blurple fill with a white tick when checked.",
+      "html": "<label class=\"ds-check\"><input type=\"checkbox\" checked><span class=\"ds-box\"></span>Minimize to tray on close</label>",
+      "css": ".ds-check{font-family:\"Segoe UI\",\"gg sans\",\"Helvetica Neue\",Arial,sans-serif;display:inline-flex;align-items:center;gap:8px;color:#dbdee1;font-size:13px;cursor:pointer;} .ds-check input{position:absolute;opacity:0;} .ds-box{width:18px;height:18px;box-sizing:border-box;border:1px solid #6d6f78;border-radius:4px;background:#1e1f22;display:inline-block;} .ds-check:hover .ds-box{border-color:#949ba4;} .ds-check input:focus-visible+.ds-box{outline:2px solid #5865f2;outline-offset:2px;} .ds-check input:checked+.ds-box{background:#5865f2 url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='M3 7.2 5.8 10 11 4' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\") center/14px no-repeat;border-color:#5865f2;}"
+    },
+    {
+      "name": "Status Panel",
+      "kind": "custom",
+      "refersTo": "status-avatar",
+      "description": "Discord-style user panel showing the bot's presence.",
+      "html": "<div class=\"ds-status\"><div class=\"ds-avatar\">B<span class=\"ds-dot\"></span></div><div><div class=\"ds-name\">Discord Bot</div><div class=\"ds-state\">Online</div></div></div>",
+      "css": ".ds-status{font-family:\"Segoe UI\",\"gg sans\",\"Helvetica Neue\",Arial,sans-serif;display:flex;align-items:center;gap:10px;padding:10px;background:#2b2d31;width:220px;} .ds-avatar{position:relative;width:34px;height:34px;border-radius:17px;background:#5865f2;color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;} .ds-dot{position:absolute;right:-4px;bottom:-4px;width:8px;height:8px;border-radius:7px;background:#23a55a;border:3px solid #2b2d31;} .ds-name{color:#f2f3f5;font-size:13px;font-weight:600;} .ds-state{color:#949ba4;font-size:12px;}"
+    },
+    {
+      "name": "Reply Banner",
+      "kind": "custom",
+      "refersTo": "inset-well",
+      "description": "Inset strip with a 3px Blurple left edge naming the message being replied to.",
+      "html": "<div class=\"ds-reply\">Replying to <strong>username</strong></div>",
+      "css": ".ds-reply{font-family:\"Segoe UI\",\"gg sans\",\"Helvetica Neue\",Arial,sans-serif;background:#1e1f22;border-left:3px solid #5865f2;border-radius:4px;padding:8px 12px;color:#949ba4;font-size:12px;} .ds-reply strong{color:#dbdee1;font-weight:600;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Home Server",
+    "overview": "The control panel should feel like one more server in the owner's Discord sidebar. It's the place their bot lives: dark, calm and immediately familiar to anyone who uses Discord every day. The sidebar reads as a channel list, the bottom-left panel reads as Discord's user panel showing the bot's presence, and settings sit on flat cards in Discord's charcoal greys. A self-hoster opening it after hours in the tray should know where everything is before they read a word.\n\nThe language is Discord's, tightened slightly into a tool. Discord's settings screens are spacious, but this app holds sliders, tables, logs and model forms, so spacing stays compact (a 4px base, 16px card padding, 10px between items) and hierarchy comes from weight and colour rather than size. Depth comes from small steps in lightness within one cool grey hue, never from outlines or shadows. Blurple is the only accent, and the presence colours (green, amber, red, grey) mean bot state and nothing else.\n\nThe look this system replaced is the one thing it rejects outright: cards, tables and lists boxed in solid `#35373c` borders. No emoji appear in the interface. Tone comes from colour, and every glyph is monochrome.",
+    "keyCharacteristics": [
+      "Discord-native dark UI: a channel-list sidebar, a user-panel status block, flat cards.",
+      "One accent (Blurple), used only for primary actions, selection, focus and toggles.",
+      "Depth comes from lightness steps within one hue. No borders on cards and no shadows.",
+      "Presence colours describe bot state and are never decorative.",
+      "Compact, tool-like density with weight-led hierarchy.",
+      "No emoji. Monochrome glyphs and small SVG icons only."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Blurple is the only accent colour. If something needs to stand out and it isn't a primary action, selection, focus or a toggle, use weight or `text-strong`, not colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The Presence Means State Rule",
+        "body": "Green, amber, red and grey on a status element always mean the bot's connection state. Never use them for decoration, categories or emphasis.",
+        "section": "colors"
+      },
+      {
+        "name": "The Weight Before Size Rule",
+        "body": "Build hierarchy with weight and colour first and size second. The full range runs from 11px to 16px. A new screen shouldn't need anything bigger.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sink, Don't Outline Rule",
+        "body": "To separate an element, step its surface up or down one level. Never draw a border around a card, table or list. That was the old look.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Hairline Only Between Regions Rule",
+        "body": "1px `hairline` dividers belong between the sidebar, header and status bar, and nowhere inside the content area.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** take every colour from `TOKENS` in `gui/theme.py`. Add a token there before you use a new value.",
+      "**Do** separate surfaces by stepping lightness (`base` → `card` → `inset` → `well`), following the Sink, Don't Outline Rule.",
+      "**Do** give every button a disabled state, and enable bot-dependent actions only while `BotState` is ONLINE. Disable them on CONNECTING, STOPPING, DISCONNECTED and ERROR as appropriate.",
+      "**Do** add new arrows, ticks or glyphs as small monochrome SVGs in `_ICONS` in `theme.py`, because Qt stylesheets can't draw them.",
+      "**Do** escape `&` as `&&` in button, checkbox and action text. Keep a single `&` in QLabel and list items.",
+      "**Do** style containers through a `class` property and the global QSS.",
+      "**Do** write form labels and checkboxes in sentence case (\"Max reply length (tokens):\") and buttons and card titles in Title Case (\"Save Persona\"). When a setting has a well-known technical name, put it in brackets after the plain one (\"Creativity (temperature):\") so people can match it to model guides."
+    ],
+    "donts": [
+      "**Don't** put a solid `#35373c` border around cards, tables or lists.",
+      "**Don't** use emoji anywhere in the UI, including button labels and status messages.",
+      "**Don't** use presence colours for anything other than bot state.",
+      "**Don't** introduce a second accent colour or any gradients or shadows.",
+      "**Don't** call an unscoped `setStyleSheet(\"…\")` on a container frame. It spreads to every child widget and clips them.",
+      "**Don't** fix button widths, or go beyond the 11–16px type range for interface text."
+    ]
+  }
+}

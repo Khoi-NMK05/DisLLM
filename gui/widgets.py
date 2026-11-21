@@ -6,6 +6,16 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
 
+from gui.theme import TOKENS
+
+# Feedback tones for StatusLabel. "neutral" doubles as the in-progress tone.
+_TONES = {
+    "neutral": TOKENS["TEXT_MUTED"],
+    "success": TOKENS["TEXT_SUCCESS"],
+    "warning": TOKENS["TEXT_WARNING"],
+    "error": TOKENS["TEXT_DANGER"],
+}
+
 
 class Card(QFrame):
     """A flat #2b2d31 surface with an uppercase section header; add content to `body`."""
@@ -47,3 +57,8 @@ class StatusLabel(QLabel):
         # A parentless widget would pop up as its own window if shown.
         if self.parentWidget() is not None or not text:
             self.setVisible(bool(text))
+
+    def setTone(self, text: str, tone: str = "neutral") -> None:
+        """Show `text` in a feedback tone: neutral, success, warning or error."""
+        self.setStyleSheet(f"color: {_TONES[tone]};")
+        self.setText(text)

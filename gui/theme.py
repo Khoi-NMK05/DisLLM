@@ -54,6 +54,10 @@ TOKENS = {
     "GREEN": "#23a55a",
     "RED": "#da373c",
     "RED_HOVER": "#a12828",
+    # Feedback text (StatusLabel tones). Lighter than the button fills so they pass 4.5:1 on CARD.
+    "TEXT_SUCCESS": "#2dc770",
+    "TEXT_WARNING": "#f0b232",
+    "TEXT_DANGER": "#fa777c",
 }
 
 _QSS = """

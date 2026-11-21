@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication
 
 from bot.config import DEFAULT_SYSTEM_PROMPT, BotConfig
 from bot.services.ai_helpers import (
@@ -205,12 +205,39 @@ class TestAIModelsTabUI(unittest.TestCase):
         self.tab.combo_presets.setCurrentText("Pirate Captain")
         self.assertEqual(self.tab.txt_system_prompt.toPlainText(), "You are a pirate.")
 
-        with patch("gui.tabs.ai_models_tab.save_custom_personas"), patch(
-            "gui.tabs.ai_models_tab.QMessageBox.question", return_value=QMessageBox.StandardButton.Yes
-        ):
+        with patch("gui.tabs.ai_models_tab.save_custom_personas"), patch.object(
+            self.tab, "_confirm", return_value=True
+        ) as confirm:
             self.tab._on_delete_preset()
+        self.assertEqual(confirm.call_args.args[2], "Delete")  # the button names the action
         self.assertNotIn("Pirate Captain", self.tab.custom_personas)
         self.assertEqual(self.tab.combo_presets.findText("Pirate Captain"), -1)
+
+    def test_new_preset_starts_empty_draft(self):
+        with patch("gui.tabs.ai_models_tab.QInputDialog.getText", return_value=("Pirate", True)):
+            self.tab._on_new_preset()
+        self.assertEqual(self.tab.combo_presets.currentText(), "Pirate")
+        self.assertEqual(self.tab.txt_system_prompt.toPlainText(), "")
+        self.assertTrue(self.tab.btn_delete_preset.isEnabled())
+
+        # Save keeps the draft's name and turns it into a real preset.
+        self.tab.txt_system_prompt.setPlainText("Arr.")
+        with patch("gui.tabs.ai_models_tab.save_custom_personas"), patch(
+            "gui.tabs.ai_models_tab.QInputDialog.getText", return_value=("Pirate", True)
+        ) as mock_dialog:
+            self.tab._on_save_preset()
+        self.assertEqual(mock_dialog.call_args.kwargs["text"], "Pirate")
+        self.assertEqual(self.tab.custom_personas["Pirate"], "Arr.")
+        self.assertEqual(self.tab.combo_presets.findText("Pirate"), self.tab.combo_presets.currentIndex())
+
+    def test_new_preset_draft_can_be_discarded(self):
+        with patch("gui.tabs.ai_models_tab.QInputDialog.getText", return_value=("Ghost", True)):
+            self.tab._on_new_preset()
+        with patch("gui.tabs.ai_models_tab.save_custom_personas") as mock_save:
+            self.tab._on_delete_preset()
+        mock_save.assert_not_called()
+        self.assertEqual(self.tab.combo_presets.findText("Ghost"), -1)
+        self.assertEqual(self.tab.txt_system_prompt.toPlainText(), DEFAULT_SYSTEM_PROMPT)
 
     def test_builtin_preset_names_are_protected(self):
         self.tab.txt_system_prompt.setPlainText("x")
