@@ -56,8 +56,11 @@ class ModerationManager:
     def save(self) -> None:
         """Persists settings to local JSON file."""
         os.makedirs(os.path.dirname(os.path.abspath(self.file_path)), exist_ok=True)
-        with open(self.file_path, "w", encoding="utf-8") as f:
+        # Write a temp file and swap it in, so a crash mid-save can't leave a half-written file.
+        tmp = f"{self.file_path}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(asdict(self.settings), f, indent=2)
+        os.replace(tmp, self.file_path)
 
     def is_channel_allowed(self, guild_id: int | None, channel_id: int) -> bool:
         """Evaluates whether the bot is permitted to respond in the given channel/DM context."""

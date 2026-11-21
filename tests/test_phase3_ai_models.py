@@ -9,13 +9,15 @@ import tempfile
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from bot.config import DEFAULT_SYSTEM_PROMPT, BotConfig
 from bot.services.ai_helpers import (
     SYSTEM_PROMPT_PRESETS,
     fetch_ollama_tags,
     fetch_openai_compatible_models,
+    load_custom_personas,
+    save_custom_personas,
 )
 from bot.services.ollama_service import LLMResponse, OllamaService
 from gui.main_window import MainWindow
@@ -149,6 +151,18 @@ class TestAIHelpers(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(models, ["gpt-4o", "gpt-4o-mini"])
 
 
+class TestCustomPersonaStorage(unittest.TestCase):
+    def test_round_trip_and_bad_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "sub", "personas.json")
+            self.assertEqual(load_custom_personas(path), {})
+            save_custom_personas({"Pirate": "Arr. ✨"}, path)
+            self.assertEqual(load_custom_personas(path), {"Pirate": "Arr. ✨"})
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("{not json")
+            self.assertEqual(load_custom_personas(path), {})
+
+
 class TestAIModelsTabUI(unittest.TestCase):
     def setUp(self):
         self.config = BotConfig(discord_token="fake_token", temperature=0.75, top_p=0.85)
@@ -173,6 +187,38 @@ class TestAIModelsTabUI(unittest.TestCase):
 
         self.tab.combo_presets.setCurrentText("Tsundere B-chan (Default)")
         self.assertEqual(self.tab.txt_system_prompt.toPlainText(), DEFAULT_SYSTEM_PROMPT)
+
+    def test_save_and_delete_custom_preset(self):
+        self.tab.txt_system_prompt.setPlainText("You are a pirate.")
+        with patch("gui.tabs.ai_models_tab.save_custom_personas") as mock_save, patch(
+            "gui.tabs.ai_models_tab.QInputDialog.getText", return_value=("  Pirate   Captain ", True)
+        ):
+            self.tab._on_save_preset()
+        mock_save.assert_called_once()
+        self.assertEqual(self.tab.custom_personas["Pirate Captain"], "You are a pirate.")
+        self.assertEqual(self.tab.combo_presets.currentText(), "Pirate Captain")
+        self.assertTrue(self.tab.btn_delete_preset.isEnabled())
+
+        # Picking another preset and coming back restores the saved prompt.
+        self.tab.combo_presets.setCurrentText("Senior Coding Companion")
+        self.assertFalse(self.tab.btn_delete_preset.isEnabled())
+        self.tab.combo_presets.setCurrentText("Pirate Captain")
+        self.assertEqual(self.tab.txt_system_prompt.toPlainText(), "You are a pirate.")
+
+        with patch("gui.tabs.ai_models_tab.save_custom_personas"), patch(
+            "gui.tabs.ai_models_tab.QMessageBox.question", return_value=QMessageBox.StandardButton.Yes
+        ):
+            self.tab._on_delete_preset()
+        self.assertNotIn("Pirate Captain", self.tab.custom_personas)
+        self.assertEqual(self.tab.combo_presets.findText("Pirate Captain"), -1)
+
+    def test_builtin_preset_names_are_protected(self):
+        self.tab.txt_system_prompt.setPlainText("x")
+        with patch("gui.tabs.ai_models_tab.save_custom_personas") as mock_save, patch(
+            "gui.tabs.ai_models_tab.QInputDialog.getText", return_value=("Casual Gamer Buddy", True)
+        ):
+            self.tab._on_save_preset()
+        mock_save.assert_not_called()
 
     def test_save_settings_persists_to_file(self):
         with tempfile.NamedTemporaryFile("w+", delete=False) as f:

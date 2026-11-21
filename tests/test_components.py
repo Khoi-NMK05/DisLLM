@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 
 from bot.cogs.commands import GeneralCog
@@ -80,6 +81,22 @@ class TestTextSplitter(unittest.TestCase):
         self.assertEqual(messages[1], "```python\nprint('hello')\nprint('world')\n```")
         self.assertEqual(messages[2], "Cool right?")
 
+    def test_split_chat_messages_strips_actions_but_not_math(self):
+        text = "*blushes* fine\nuse `x*y*z` and 2*3*4 = 24\n**bold** stays"
+        self.assertEqual(
+            self.splitter.split_chat_messages(text),
+            ["fine", "use `x*y*z` and 2*3*4 = 24", "**bold** stays"],
+        )
+
+    def test_split_chat_messages_long_code_block_keeps_fences(self):
+        code = "```py\n" + "    print(1)\n" * 30 + "```"
+        parts = self.splitter.split_chat_messages(code, max_chunk_limit=100)
+        self.assertGreater(len(parts), 1)
+        for part in parts:
+            self.assertLessEqual(len(part), 100)
+            self.assertTrue(part.startswith("```py\n    print(1)") and part.endswith("\n```"))
+        self.assertEqual(sum(p.count("print(1)") for p in parts), 30)
+
     def test_split_chat_messages_exceeds_limit(self):
         long_line = "A" * 80
         text = f"short line\n{long_line}"
@@ -107,6 +124,14 @@ class TestDatabaseManager(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(history[1], {"role": "assistant", "content": "Hi"})
         self.assertEqual(history[2], {"role": "user", "content": "How are you?"})
         self.assertEqual(history[3], {"role": "assistant", "content": "Fine"})
+
+    async def test_concurrent_turns_stay_paired(self):
+        await asyncio.gather(
+            self.db.save_turn(guild_id=1, channel_id=10, user_id=1, user_content="Q1", assistant_content="A1"),
+            self.db.save_turn(guild_id=1, channel_id=10, user_id=2, user_content="Q2", assistant_content="A2"),
+        )
+        contents = [m["content"] for m in await self.db.get_recent_history(10)]
+        self.assertIn(contents, (["Q1", "A1", "Q2", "A2"], ["Q2", "A2", "Q1", "A1"]))
 
     async def test_channel_segregation(self):
         await self.db.save_turn(guild_id=1, channel_id=10, user_id=1001, user_content="Ch 10", assistant_content="Reply 10")

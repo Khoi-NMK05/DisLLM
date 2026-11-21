@@ -309,8 +309,11 @@ class BotConfig:
                 new_lines.append("\n")
             new_lines.append(f"{key}={updates[key]}\n")
 
-        with open(env_path, "w", encoding="utf-8") as f:
+        # Write a temp file and swap it in, so a crash mid-save can't lose the token.
+        tmp = f"{env_path}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
             f.writelines(new_lines)
+        os.replace(tmp, env_path)
 
     def save_token(self, token: str, env_path: str = ".env") -> None:
         """Persists the updated token to self and the local .env file."""

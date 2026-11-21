@@ -56,8 +56,8 @@ class TextSplitter:
         s = text.strip()
         # Remove character name prefix if LLM generates script-style output (e.g., "B-chan: ...")
         s = re.sub(r"^(?:b-?chan|assistant|bot)\s*:\s*", "", s, flags=re.IGNORECASE).strip()
-        # Remove single-asterisk roleplay action descriptions like *blushes* while preserving **bold**
-        s = re.sub(r"(?<!\*)\*(?!\*)([^*]+)(?<!\*)\*(?!\*)", "", s).strip()
+        # Remove roleplay actions like *blushes*; the whitespace bounds keep 2*3*4, `x*y*z` and **bold** intact.
+        s = re.sub(r"(?<!\S)\*(?![\s*])[^*\n]+?(?<![\s*])\*(?!\S)", "", s).strip()
 
         if len(s) >= 2:
             quote_pairs = [('"', '"'), ("'", "'"), ('“', '”'), ('「', '」')]
@@ -67,6 +67,24 @@ class TextSplitter:
                     if inner:
                         return inner
         return s
+
+    @staticmethod
+    def _split_code_block(block: str, limit: int) -> list[str]:
+        """Splits a long fenced code block by line, closing and reopening the fence in every part."""
+        lines = block.split("\n")
+        fence = lines[0]
+        body = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
+        room = max(1, limit - len(fence) - 5)  # 5 = two newlines + closing ```
+        parts: list[list[str]] = []
+        size = room + 1  # Forces a new part for the first line.
+        for line in body:
+            for piece in [line[i : i + room] for i in range(0, len(line), room)] or [""]:
+                if size + 1 + len(piece) > room:
+                    parts.append([])
+                    size = -1
+                parts[-1].append(piece)
+                size += 1 + len(piece)
+        return [f"{fence}\n" + "\n".join(p) + "\n```" for p in parts]
 
     def split_chat_messages(self, text: str, max_chunk_limit: int | None = None) -> list[str]:
         """
@@ -122,7 +140,9 @@ class TextSplitter:
             msg = msg.strip()
             if not msg:
                 continue
-            if len(msg) > limit:
+            if len(msg) > limit and msg.startswith("```") and "\n" in msg:
+                final_messages.extend(self._split_code_block(msg, limit))
+            elif len(msg) > limit:
                 final_messages.extend(self.split(msg, limit=limit))
             else:
                 final_messages.append(msg)

@@ -4,7 +4,9 @@ Helper utilities for querying, pulling, and creating local & cloud AI models.
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 from typing import AsyncGenerator
 import aiohttp
 
@@ -75,6 +77,32 @@ SYSTEM_PROMPT_PRESETS = {
         "in a playful and engaging way without sounding forced or cringey."
     ),
 }
+
+CUSTOM_PERSONAS_PATH = "data/personas.json"
+
+
+def load_custom_personas(path: str = CUSTOM_PERSONAS_PATH) -> dict[str, str]:
+    """Returns user-saved persona presets as {name: prompt}; empty if the file is missing or broken."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as err:
+        logger.warning("Could not read custom personas from %s: %s", path, err)
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(k): str(v) for k, v in data.items() if str(k).strip() and isinstance(v, str)}
+
+
+def save_custom_personas(personas: dict[str, str], path: str = CUSTOM_PERSONAS_PATH) -> None:
+    """Writes user-saved persona presets, replacing the file atomically."""
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(personas, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, path)
 
 
 async def fetch_ollama_tags(host: str = "http://localhost:11434") -> list[str]:

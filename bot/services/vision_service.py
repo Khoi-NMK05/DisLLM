@@ -71,7 +71,7 @@ class VisionService:
             }
         ]
 
-        num_predict = getattr(self.config, "vision_num_predict", 1024)
+        num_predict = self.config.vision_num_predict
 
         try:
             logger.info("Calling vision model '%s' (predict=%d)...", self.config.vision_model, num_predict)
@@ -79,7 +79,7 @@ class VisionService:
                 model=self.config.vision_model,
                 messages=messages_payload,
                 think=False,
-                keep_alive=getattr(self.config, "keep_alive", "24h"),
+                keep_alive=self.config.keep_alive,
                 options={
                     "temperature": 0.2,
                     "num_predict": num_predict,

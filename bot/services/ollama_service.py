@@ -150,7 +150,7 @@ class OllamaService:
                 guidance = TOOL_GUIDANCE
 
         messages = self.build_messages_payload(history, formatted_user_prompt, guidance)
-        provider = getattr(self.config, "ai_provider", "ollama").lower()
+        provider = self.config.ai_provider.lower()
         if provider == "ollama":
             raw_content, raw = await self._ollama_chat(messages, use_tools, sources)
         else:
@@ -170,14 +170,14 @@ class OllamaService:
                 "model": self.config.ollama_model,
                 "messages": messages,
                 "think": False,
-                "keep_alive": getattr(self.config, "keep_alive", "24h"),
+                "keep_alive": self.config.keep_alive,
                 "options": {
                     "temperature": self.config.temperature,
                     "top_p": self.config.top_p,
-                    "min_p": getattr(self.config, "min_p", 0.07),
-                    "repeat_penalty": getattr(self.config, "repeat_penalty", 1.08),
+                    "min_p": self.config.min_p,
+                    "repeat_penalty": self.config.repeat_penalty,
                     "num_predict": self.config.num_predict,
-                    "num_ctx": getattr(self.config, "num_ctx", 8192),
+                    "num_ctx": self.config.num_ctx,
                 },
             }
             if offer_tools:

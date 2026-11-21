@@ -76,7 +76,7 @@ class TestCustomCommandManager(unittest.IsolatedAsyncioTestCase):
             name="roast_test",
             description="Roast target",
             command_type="ai_prompt",
-            prompt_template="Roast {query} now!",
+            prompt_template="Roast {query} now! {style}",  # unknown braces must pass through
             ephemeral=True,
         )
 
@@ -95,7 +95,7 @@ class TestCustomCommandManager(unittest.IsolatedAsyncioTestCase):
         await callback(interaction_mock, query="noob")
 
         interaction_mock.response.defer.assert_awaited_once_with(ephemeral=True)
-        ollama_mock.generate_response.assert_awaited_once_with([], "Roast noob now!", search_query=None)
+        ollama_mock.generate_response.assert_awaited_once_with([], "Roast noob now! {style}", search_query=None)
         interaction_mock.followup.send.assert_awaited_once_with("Burn!", ephemeral=True)
 
     async def test_ai_prompt_with_web_search_sends_query_and_sources(self):

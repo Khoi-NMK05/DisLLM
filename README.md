@@ -32,7 +32,7 @@ The bot runs on your own machine. With a local model and web search off, no mess
 - The bot is told today's date, so "latest" and "this week" mean the right thing.
 
 **Customization**
-- **Personas:** edit the system prompt or choose a built-in preset. The default persona is a playful "tsundere" character; replace it with whatever fits your server.
+- **Personas:** edit the system prompt, choose a built-in preset, or save your own prompts as presets (stored in `data/personas.json`). The default persona is a playful "tsundere" character; replace it with whatever fits your server.
 - **No-code slash commands:** create AI prompt shortcuts, static replies or embed cards from the app, and sync them to Discord in one click.
 - **Plugins:** drop a standard `discord.py` cog into `plugins/`, then load, unload or reload it while the bot is running.
 

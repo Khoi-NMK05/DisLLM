@@ -143,8 +143,11 @@ class CustomCommandManager:
         """Persists custom commands to local JSON file."""
         os.makedirs(os.path.dirname(os.path.abspath(self.file_path)), exist_ok=True)
         data = [asdict(cmd) for cmd in self.commands]
-        with open(self.file_path, "w", encoding="utf-8") as f:
+        # Write a temp file and swap it in, so a crash mid-save can't leave a half-written file.
+        tmp = f"{self.file_path}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+        os.replace(tmp, self.file_path)
 
     def add_command(self, cmd: CustomCommand) -> None:
         cmd.validate()
@@ -193,10 +196,11 @@ class CustomCommandManager:
                         await interaction.followup.send("⚠️ AI Service is not configured.", ephemeral=True)
                         return
 
-                    target_prompt = cmd.prompt_template.format(
-                        query=query,
-                        user=interaction.user.display_name,
-                        bot=bot.user.display_name if bot.user else "Bot",
+                    # Plain replace, not str.format: templates may contain other braces, like JSON examples.
+                    target_prompt = (
+                        cmd.prompt_template.replace("{query}", query)
+                        .replace("{user}", interaction.user.display_name)
+                        .replace("{bot}", bot.user.display_name if bot.user else "Bot")
                     )
                     # Searching up front works even with models that can't call tools.
                     search_query = (query or target_prompt) if cmd.web_search else None
@@ -207,9 +211,12 @@ class CustomCommandManager:
                         chunks.append(format_sources(resp.sources))
                     for chunk in chunks:
                         await interaction.followup.send(chunk, ephemeral=cmd.ephemeral)
-                except Exception as err:
-                    logger.error("Error executing custom AI command /%s: %s", cmd.name, err)
-                    await interaction.followup.send(f"❌ Error: {err}", ephemeral=True)
+                except Exception:
+                    # Provider errors can be long or internal; keep them in the log, not in Discord.
+                    logger.exception("Error executing custom AI command /%s", cmd.name)
+                    await interaction.followup.send(
+                        "❌ Something went wrong while generating a reply. Check the bot's logs.", ephemeral=True
+                    )
 
             return ai_callback
 

@@ -74,20 +74,17 @@ class DatabaseManager:
     ) -> None:
         """Saves a user-assistant conversation turn into the database."""
         conn = await self._get_conn()
-        await conn.execute(
+        # One call, so another reply's rows can't land between this user message and its answer.
+        # The assistant row keeps the user's ID so /forget_me removes both.
+        await conn.executemany(
             """
             INSERT INTO messages (guild_id, channel_id, user_id, role, content)
-            VALUES (?, ?, ?, 'user', ?)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (guild_id, channel_id, user_id, user_content),
-        )
-        # Assistant messages are assigned user_id 0 or the responding context
-        await conn.execute(
-            """
-            INSERT INTO messages (guild_id, channel_id, user_id, role, content)
-            VALUES (?, ?, ?, 'assistant', ?)
-            """,
-            (guild_id, channel_id, user_id, assistant_content),
+            [
+                (guild_id, channel_id, user_id, "user", user_content),
+                (guild_id, channel_id, user_id, "assistant", assistant_content),
+            ],
         )
         await conn.commit()
 

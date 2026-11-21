@@ -20,8 +20,10 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPlainTextEdit,
     QPushButton,
     QSlider,
@@ -38,7 +40,9 @@ from bot.services.ai_helpers import (
     create_ollama_model,
     fetch_ollama_tags,
     fetch_openai_compatible_models,
+    load_custom_personas,
     pull_ollama_model,
+    save_custom_personas,
 )
 
 if TYPE_CHECKING:
@@ -436,23 +440,119 @@ class AIModelsTab(QWidget):
         header_row = QHBoxLayout()
         header_row.addWidget(QLabel("Persona Preset:"))
 
+        self.custom_personas = load_custom_personas()
         self.combo_presets = QComboBox()
-        self.combo_presets.addItems(list(SYSTEM_PROMPT_PRESETS.keys()))
         self.combo_presets.currentTextChanged.connect(self._on_preset_changed)
         header_row.addWidget(self.combo_presets, stretch=1)
+
+        self.btn_save_preset = QPushButton("Save as Preset")
+        self.btn_save_preset.setToolTip("Save the prompt below as a persona preset you can pick later.")
+        self.btn_save_preset.clicked.connect(self._on_save_preset)
+        header_row.addWidget(self.btn_save_preset)
+
+        self.btn_delete_preset = QPushButton("Delete")
+        self.btn_delete_preset.setProperty("class", "danger")
+        self.btn_delete_preset.setToolTip("Delete this saved preset. Built-in presets can't be deleted.")
+        self.btn_delete_preset.clicked.connect(self._on_delete_preset)
+        header_row.addWidget(self.btn_delete_preset)
         layout.addLayout(header_row)
 
         self.txt_system_prompt = QPlainTextEdit()
         layout.addWidget(self.txt_system_prompt)
 
+        self._populate_presets()
         return group
 
+    def _preset_prompt(self, name: str) -> str | None:
+        if name in SYSTEM_PROMPT_PRESETS:
+            return SYSTEM_PROMPT_PRESETS[name] or DEFAULT_SYSTEM_PROMPT
+        return self.custom_personas.get(name)
+
+    def _populate_presets(self, select: str | None = None) -> None:
+        """Rebuilds the dropdown without touching the prompt text."""
+        self.combo_presets.blockSignals(True)
+        self.combo_presets.clear()
+        self.combo_presets.addItems(list(SYSTEM_PROMPT_PRESETS))
+        self.combo_presets.addItems([n for n in self.custom_personas if n not in SYSTEM_PROMPT_PRESETS])
+        if select is not None:
+            self.combo_presets.setCurrentIndex(max(0, self.combo_presets.findText(select)))
+        self.combo_presets.blockSignals(False)
+        self._update_preset_buttons()
+
+    def _update_preset_buttons(self) -> None:
+        self.btn_delete_preset.setEnabled(self.combo_presets.currentText() in self.custom_personas)
+
     def _on_preset_changed(self, preset_name: str) -> None:
-        template = SYSTEM_PROMPT_PRESETS.get(preset_name)
-        if template is None:
-            self.txt_system_prompt.setPlainText(DEFAULT_SYSTEM_PROMPT)
-        else:
-            self.txt_system_prompt.setPlainText(template)
+        self._update_preset_buttons()
+        prompt = self._preset_prompt(preset_name)
+        if prompt is not None:
+            self.txt_system_prompt.setPlainText(prompt)
+
+    def _on_save_preset(self) -> None:
+        prompt = self.txt_system_prompt.toPlainText().strip()
+        if not prompt:
+            self._set_status("Write a system prompt before saving it as a preset.", "#f0b232")
+            return
+
+        current = self.combo_presets.currentText()
+        default_name = current if current in self.custom_personas else ""
+        name, ok = QInputDialog.getText(self, "Save Persona Preset", "Preset name:", text=default_name)
+        name = " ".join(name.split())
+        if not ok or not name:
+            return
+        if name in SYSTEM_PROMPT_PRESETS:
+            self._set_status(f"'{name}' is a built-in preset. Pick another name.", "#f0b232")
+            return
+        if name in self.custom_personas and name != current:
+            reply = QMessageBox.question(
+                self,
+                "Replace Preset",
+                f"A preset named '{name}' already exists. Replace it?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
+        updated = {**self.custom_personas, name: prompt}
+        try:
+            save_custom_personas(updated)
+        except OSError as err:
+            self._set_status(f"Could not save preset: {err}", "#da373c")
+            return
+        self.custom_personas = updated
+        self._populate_presets(select=name)
+        self._set_status(
+            f"Saved preset '{name}'. Click 'Save && Apply Settings' to use it in the bot.", "#23a55a"
+        )
+
+    def _on_delete_preset(self) -> None:
+        name = self.combo_presets.currentText()
+        if name not in self.custom_personas:
+            return
+        reply = QMessageBox.question(
+            self,
+            "Delete Preset",
+            f"Delete the persona preset '{name}'? The bot's current prompt is not changed.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        updated = {k: v for k, v in self.custom_personas.items() if k != name}
+        try:
+            save_custom_personas(updated)
+        except OSError as err:
+            self._set_status(f"Could not delete preset: {err}", "#da373c")
+            return
+        self.custom_personas = updated
+        self._populate_presets(select=next(iter(SYSTEM_PROMPT_PRESETS)))
+        self._set_status(f"Deleted preset '{name}'.", "#23a55a")
+
+    def _set_status(self, text: str, color: str) -> None:
+        self.lbl_status.setText(text)
+        self.lbl_status.setStyleSheet(f"color: {color};")
 
     # -------------------------------------------------------------------------
     # Card 5: Vision Settings
@@ -565,8 +665,15 @@ class AIModelsTab(QWidget):
         self.slider_rep_penalty.setValue(int(self.config.repeat_penalty * 100))
         self.txt_keep_alive.setText(self.config.keep_alive)
 
-        # Prompt
+        # Prompt: show the preset that matches the saved prompt, if any.
         self.txt_system_prompt.setPlainText(self.config.system_prompt)
+        saved = self.config.system_prompt.strip()
+        match = next(
+            (n for n in [*SYSTEM_PROMPT_PRESETS, *self.custom_personas]
+             if (self._preset_prompt(n) or "").strip() == saved),
+            None,
+        )
+        self._populate_presets(select=match)
 
         # Trigger visibility update
         self._on_provider_changed()
