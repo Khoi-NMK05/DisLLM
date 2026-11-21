@@ -8,7 +8,7 @@ from bot.memory import MemoryManager
 from bot.services.ollama_service import OllamaService
 from bot.services.vision_service import VisionService
 from bot.utils.image import ImageProcessor
-from bot.utils.text import TextSplitter
+from bot.utils.text import TextSplitter, format_sources
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +187,10 @@ class ChatCog(commands.Cog, name="Chat"):
 
                 if not reply_chunks:
                     reply_chunks = [llm_response.content] if llm_response.content.strip() else []
+
+                sources_line = format_sources(llm_response.sources) if config.search_show_sources else ""
+                if sources_line:
+                    reply_chunks.append(sources_line)
 
                 for index, chunk in enumerate(reply_chunks):
                     if index == 0:

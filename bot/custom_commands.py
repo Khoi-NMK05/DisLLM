@@ -17,7 +17,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot.utils.text import TextSplitter
+from bot.utils.text import TextSplitter, format_sources
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +58,18 @@ DEFAULT_BUILTIN_COMMANDS = [
         "enabled": True,
     },
     {
+        "name": "search",
+        "description": "Look something up on the web and answer with the latest info.",
+        "command_type": "ai_prompt",
+        "prompt_template": "Answer this using the web search results: {query}",
+        "static_content": "",
+        "embed_title": "",
+        "embed_color": "#5865f2",
+        "ephemeral": False,
+        "enabled": True,
+        "web_search": True,
+    },
+    {
         "name": "rules",
         "description": "Display the community rules and guidelines.",
         "command_type": "rich_embed",
@@ -89,6 +101,7 @@ class CustomCommand:
     embed_color: str = "#5865f2"
     ephemeral: bool = False
     enabled: bool = True
+    web_search: bool = False  # AI prompts only: search the web for {query} before answering.
 
     def validate(self) -> None:
         """Validates command name and parameters according to Discord standards."""
@@ -185,9 +198,13 @@ class CustomCommandManager:
                         user=interaction.user.display_name,
                         bot=bot.user.display_name if bot.user else "Bot",
                     )
-                    resp = await ollama_service.generate_response([], target_prompt)
+                    # Searching up front works even with models that can't call tools.
+                    search_query = (query or target_prompt) if cmd.web_search else None
+                    resp = await ollama_service.generate_response([], target_prompt, search_query=search_query)
                     # Discord rejects empty messages and anything over 2000 chars.
                     chunks = TextSplitter().split(resp.content) or ["…"]
+                    if ollama_service.config.search_show_sources and resp.sources:
+                        chunks.append(format_sources(resp.sources))
                     for chunk in chunks:
                         await interaction.followup.send(chunk, ephemeral=cmd.ephemeral)
                 except Exception as err:

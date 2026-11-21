@@ -128,3 +128,13 @@ class TextSplitter:
                 final_messages.append(msg)
 
         return final_messages
+
+
+MAX_SOURCES_SHOWN = 3
+
+
+def format_sources(urls: list[str]) -> str:
+    """One short line of links; angle brackets stop Discord from adding a preview card for each."""
+    if not urls:
+        return ""
+    return "-# Sources: " + " ".join(f"<{u}>" for u in urls[:MAX_SOURCES_SHOWN])

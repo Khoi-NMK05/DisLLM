@@ -91,7 +91,11 @@ class AIModelsTab(QWidget):
         lower_row = QHBoxLayout()
         lower_row.setSpacing(16)
         lower_row.addWidget(self._create_persona_card(), stretch=2)
-        lower_row.addWidget(self._create_vision_card(), stretch=1)
+        side_col = QVBoxLayout()
+        side_col.setSpacing(16)
+        side_col.addWidget(self._create_vision_card())
+        side_col.addWidget(self._create_search_card())
+        lower_row.addLayout(side_col, stretch=1)
         main_layout.addLayout(lower_row)
 
         # 4. Action Bar
@@ -490,6 +494,37 @@ class AIModelsTab(QWidget):
         layout.addStretch()
         return group
 
+    def _create_search_card(self) -> Card:
+        group = Card("Web Search")
+        layout = group.body
+        layout.setSpacing(6)
+
+        self.chk_search_enabled = QCheckBox("Let the bot search the web")
+        self.chk_search_enabled.setChecked(self.config.search_enabled)
+        layout.addWidget(self.chk_search_enabled)
+
+        self.chk_search_sources = QCheckBox("Show a Sources line under replies")
+        self.chk_search_sources.setChecked(self.config.search_show_sources)
+        layout.addWidget(self.chk_search_sources)
+
+        results_row = QHBoxLayout()
+        results_row.addWidget(QLabel("Results per search:"))
+        self.spin_search_results = QSpinBox()
+        self.spin_search_results.setRange(1, 10)
+        self.spin_search_results.setValue(self.config.search_max_results)
+        results_row.addWidget(self.spin_search_results)
+        layout.addLayout(results_row)
+
+        note = QLabel(
+            "Uses DuckDuckGo. Search queries leave your computer even with a local model. "
+            "The model decides when to search if it supports tools; custom AI commands with "
+            "web search turned on always search."
+        )
+        note.setWordWrap(True)
+        note.setProperty("class", "muted")
+        layout.addWidget(note)
+        return group
+
     # -------------------------------------------------------------------------
     # Save & Reset Handlers
     # -------------------------------------------------------------------------
@@ -568,6 +603,9 @@ class AIModelsTab(QWidget):
         self.config.vision_model = self.combo_vision_model.currentText().strip()
         self.config.vision_max_dimension = self.spin_vision_dim.value()
         self.config.vision_num_predict = self.spin_vision_tokens.value()
+        self.config.search_enabled = self.chk_search_enabled.isChecked()
+        self.config.search_show_sources = self.chk_search_sources.isChecked()
+        self.config.search_max_results = self.spin_search_results.value()
 
         # Save to .env file
         self.config.save_ai_settings()

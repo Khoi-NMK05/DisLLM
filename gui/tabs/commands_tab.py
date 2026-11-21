@@ -170,8 +170,13 @@ class CommandsTab(QWidget):
         self.chk_ephemeral = QCheckBox("Ephemeral (only visible to command user)")
         self.chk_enabled = QCheckBox("Command Enabled")
         self.chk_enabled.setChecked(True)
+        self.chk_web_search = QCheckBox("Search the web for {query} first")
+        self.chk_web_search.setToolTip(
+            "Looks up {query} before the AI answers. Works with any model. Needs Web Search turned on in AI Models."
+        )
 
         opt_row.addWidget(self.chk_ephemeral)
+        opt_row.addWidget(self.chk_web_search)
         opt_row.addWidget(self.chk_enabled)
         opt_row.addStretch()
         editor_layout.addLayout(opt_row)
@@ -289,6 +294,7 @@ class CommandsTab(QWidget):
         self.txt_embed_color.setText(cmd.embed_color)
         self.chk_ephemeral.setChecked(cmd.ephemeral)
         self.chk_enabled.setChecked(cmd.enabled)
+        self.chk_web_search.setChecked(cmd.web_search)
 
         self._on_command_type_changed()
 
@@ -296,6 +302,7 @@ class CommandsTab(QWidget):
         cmd_type = self.combo_cmd_type.currentData()
         is_embed = (cmd_type == "rich_embed")
         is_ai = (cmd_type == "ai_prompt")
+        self.chk_web_search.setVisible(is_ai)
 
         # Toggle embed fields
         for i in range(self.embed_fields_row.count()):
@@ -324,6 +331,7 @@ class CommandsTab(QWidget):
         self.txt_embed_color.setText("#5865f2")
         self.chk_ephemeral.setChecked(False)
         self.chk_enabled.setChecked(True)
+        self.chk_web_search.setChecked(False)
         self.txt_cmd_name.setFocus()
         self.lbl_cmd_status.setText("Fill in the fields above and click 'Save Command'.")
         self.lbl_cmd_status.setStyleSheet("color: #949ba4;")
@@ -367,6 +375,7 @@ class CommandsTab(QWidget):
             embed_color=embed_color,
             ephemeral=ephemeral,
             enabled=enabled,
+            web_search=cmd_type == "ai_prompt" and self.chk_web_search.isChecked(),
         )
 
         try:

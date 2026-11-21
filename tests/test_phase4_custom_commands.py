@@ -95,8 +95,32 @@ class TestCustomCommandManager(unittest.IsolatedAsyncioTestCase):
         await callback(interaction_mock, query="noob")
 
         interaction_mock.response.defer.assert_awaited_once_with(ephemeral=True)
-        ollama_mock.generate_response.assert_awaited_once_with([], "Roast noob now!")
+        ollama_mock.generate_response.assert_awaited_once_with([], "Roast noob now!", search_query=None)
         interaction_mock.followup.send.assert_awaited_once_with("Burn!", ephemeral=True)
+
+    async def test_ai_prompt_with_web_search_sends_query_and_sources(self):
+        cmd = CustomCommand(
+            name="news", description="News", command_type="ai_prompt",
+            prompt_template="Latest on {query}", web_search=True,
+        )
+        bot_mock = MagicMock()
+        ollama_mock = AsyncMock()
+        ollama_mock.config.search_show_sources = True
+        ollama_mock.generate_response.return_value = LLMResponse(content="Here.", sources=["https://a.com"])
+        bot_mock.ollama_service = ollama_mock
+        bot_mock.user.display_name = "TsundereBot"
+
+        interaction_mock = AsyncMock(spec=discord.Interaction)
+        interaction_mock.user.display_name = "Khoi"
+        interaction_mock.response.defer = AsyncMock()
+        interaction_mock.followup.send = AsyncMock()
+
+        callback = self.manager.create_slash_callback(cmd, bot_mock)
+        await callback(interaction_mock, query="mars")
+
+        ollama_mock.generate_response.assert_awaited_once_with([], "Latest on mars", search_query="mars")
+        sent = [c.args[0] for c in interaction_mock.followup.send.await_args_list]
+        self.assertEqual(sent, ["Here.", "-# Sources: <https://a.com>"])
 
     async def test_static_and_embed_callbacks(self):
         cmd_static = CustomCommand(

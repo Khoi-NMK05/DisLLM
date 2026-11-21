@@ -249,7 +249,8 @@ class TestOllamaService(unittest.IsolatedAsyncioTestCase):
         ]
         payload = service.build_messages_payload(history, "Current prompt")
         self.assertEqual(len(payload), 4)
-        self.assertEqual(payload[0], {"role": "system", "content": "Test System Prompt"})
+        self.assertEqual(payload[0]["role"], "system")
+        self.assertTrue(payload[0]["content"].startswith("Test System Prompt\n\nToday's date is "))
         self.assertEqual(payload[1], {"role": "user", "content": "Prev user"})
         self.assertEqual(payload[2], {"role": "assistant", "content": "Prev assistant"})
         self.assertEqual(payload[3], {"role": "user", "content": "Current prompt"})

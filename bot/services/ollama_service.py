@@ -1,6 +1,8 @@
+import json
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import date
 from typing import Any
 
 import aiohttp
@@ -8,8 +10,23 @@ import ollama
 
 from bot.config import BotConfig
 from bot.services.ai_helpers import PROVIDER_PRESETS
+from bot.services.search_service import WEB_SEARCH_TOOL, SearchService, SearchServiceError
 
 logger = logging.getLogger(__name__)
+
+MAX_SEARCH_ROUNDS = 2  # Tool-call rounds before the model must answer.
+MAX_CALLS_PER_ROUND = 3
+
+TOOL_GUIDANCE = (
+    "\n\nYou can call the web_search tool. Use it when the user asks about news, recent events, releases, "
+    "prices, scores, or anything that may have changed since your training, or when you are unsure of a fact. "
+    "Don't search for casual chat. When you use search results, keep the facts accurate: your persona "
+    "changes your tone, never the facts."
+)
+INJECTED_GUIDANCE = (
+    "\n\nThe user's message includes web search results. Base factual claims on them and say so if they "
+    "don't answer the question. Your persona changes your tone, never the facts."
+)
 
 
 @dataclass
@@ -19,6 +36,7 @@ class LLMResponse:
     content: str
     reaction: str | None = None
     raw: dict[str, Any] | None = None
+    sources: list[str] = field(default_factory=list)  # URLs of web results the model was given
 
 
 class OllamaService:
@@ -27,8 +45,14 @@ class OllamaService:
     and cloud APIs (OpenRouter, OpenAI, Groq, Gemini) via an abstracted router.
     """
 
-    def __init__(self, config: BotConfig, client: ollama.AsyncClient | None = None) -> None:
+    def __init__(
+        self,
+        config: BotConfig,
+        client: ollama.AsyncClient | None = None,
+        search_service: SearchService | None = None,
+    ) -> None:
         self.config = config
+        self.search_service = search_service
         if client is not None:
             self.client = client
         elif config.ollama_host:
@@ -62,63 +86,133 @@ class OllamaService:
         self,
         history: list[dict[str, str]],
         formatted_user_prompt: str,
-    ) -> list[dict[str, str]]:
+        guidance: str = "",
+    ) -> list[dict[str, Any]]:
         """Constructs the structured messages list for chat completions API."""
-        payload: list[dict[str, str]] = [{"role": "system", "content": self.config.system_prompt}]
+        # Models don't know today's date; without it "latest" or "this week" means nothing.
+        system = f"{self.config.system_prompt}\n\nToday's date is {date.today():%A, %B %d, %Y}.{guidance}"
+        payload: list[dict[str, Any]] = [{"role": "system", "content": system}]
         payload.extend(history)
         payload.append({"role": "user", "content": formatted_user_prompt})
         return payload
+
+    def _search_available(self) -> bool:
+        return self.search_service is not None and self.search_service.enabled
+
+    async def _run_search(self, query: str, sources: list[str]) -> str:
+        """Runs one search and returns text for the model. A failure becomes text, not an exception."""
+        assert self.search_service is not None
+        try:
+            results = await self.search_service.search(query)
+        except SearchServiceError as err:
+            logger.warning("%s", err)
+            return f'Web search for "{query}" failed. Answer from what you know and say you could not check online.'
+        for r in results:
+            if r.url not in sources:
+                sources.append(r.url)
+        return SearchService.format_results(query, results)
+
+    async def _run_tool_call(self, function: Any, sources: list[str]) -> str:
+        name = function.get("name")
+        args = function.get("arguments") or {}
+        if isinstance(args, str):  # OpenAI-compatible APIs send arguments as a JSON string.
+            try:
+                args = json.loads(args)
+            except ValueError:
+                args = {}
+        query = str(args.get("query", "")).strip() if isinstance(args, dict) else ""
+        if name != "web_search" or not query:
+            return "Unknown tool or empty query."
+        return await self._run_search(query, sources)
 
     async def generate_response(
         self,
         history: list[dict[str, str]],
         formatted_user_prompt: str,
+        search_query: str | None = None,
     ) -> LLMResponse:
         """
         Routes the prompt to the selected local or cloud provider and returns cleaned reply and reaction.
+
+        With web search enabled, the model may call the web_search tool. Passing `search_query`
+        searches up front and puts the results in the prompt instead, which works with any model.
         """
+        sources: list[str] = []
+        guidance = ""
+        use_tools = False
+        if self._search_available():
+            if search_query and search_query.strip():
+                results_text = await self._run_search(search_query, sources)
+                formatted_user_prompt = f"{formatted_user_prompt}\n\n{results_text}"
+                guidance = INJECTED_GUIDANCE
+            else:
+                use_tools = True
+                guidance = TOOL_GUIDANCE
+
+        messages = self.build_messages_payload(history, formatted_user_prompt, guidance)
         provider = getattr(self.config, "ai_provider", "ollama").lower()
-
         if provider == "ollama":
-            return await self._generate_ollama_response(history, formatted_user_prompt)
+            raw_content, raw = await self._ollama_chat(messages, use_tools, sources)
         else:
-            return await self._generate_openai_compatible_response(history, formatted_user_prompt)
+            raw_content, raw = await self._openai_chat(messages, use_tools, sources)
 
-    async def _generate_ollama_response(
-        self,
-        history: list[dict[str, str]],
-        formatted_user_prompt: str,
-    ) -> LLMResponse:
-        messages_payload = self.build_messages_payload(history, formatted_user_prompt)
-
-        response = await self.client.chat(
-            model=self.config.ollama_model,
-            messages=messages_payload,
-            think=False,
-            keep_alive=getattr(self.config, "keep_alive", "24h"),
-            options={
-                "temperature": self.config.temperature,
-                "top_p": self.config.top_p,
-                "min_p": getattr(self.config, "min_p", 0.07),
-                "repeat_penalty": getattr(self.config, "repeat_penalty", 1.08),
-                "num_predict": self.config.num_predict,
-                "num_ctx": getattr(self.config, "num_ctx", 8192),
-            },
-        )
-
-        raw_content = response.get("message", {}).get("content", "").strip()
-        cleaned_content = self.clean_think_tags(raw_content)
+        cleaned_content = self.clean_think_tags(raw_content.strip())
         reaction, final_reply = self.extract_reaction(cleaned_content)
+        return LLMResponse(content=final_reply, reaction=reaction, raw=raw, sources=sources)
 
-        return LLMResponse(content=final_reply, reaction=reaction, raw=response)
+    async def _ollama_chat(
+        self, messages: list[dict[str, Any]], use_tools: bool, sources: list[str]
+    ) -> tuple[str, Any]:
+        rounds = 0
+        while True:
+            offer_tools = use_tools and rounds < MAX_SEARCH_ROUNDS
+            kwargs: dict[str, Any] = {
+                "model": self.config.ollama_model,
+                "messages": messages,
+                "think": False,
+                "keep_alive": getattr(self.config, "keep_alive", "24h"),
+                "options": {
+                    "temperature": self.config.temperature,
+                    "top_p": self.config.top_p,
+                    "min_p": getattr(self.config, "min_p", 0.07),
+                    "repeat_penalty": getattr(self.config, "repeat_penalty", 1.08),
+                    "num_predict": self.config.num_predict,
+                    "num_ctx": getattr(self.config, "num_ctx", 8192),
+                },
+            }
+            if offer_tools:
+                kwargs["tools"] = [WEB_SEARCH_TOOL]
+            try:
+                response = await self.client.chat(**kwargs)
+            except ollama.ResponseError as err:
+                if offer_tools and "tool" in str(err).lower():
+                    logger.warning(
+                        "Model '%s' does not support tools, so it can't decide to search on its own. "
+                        "Custom AI commands with web search turned on still work.",
+                        self.config.ollama_model,
+                    )
+                    use_tools = False
+                    continue
+                raise
 
-    async def _generate_openai_compatible_response(
-        self,
-        history: list[dict[str, str]],
-        formatted_user_prompt: str,
-    ) -> LLMResponse:
-        messages_payload = self.build_messages_payload(history, formatted_user_prompt)
+            message = response.get("message") or {}
+            tool_calls = message.get("tool_calls") or []
+            if not offer_tools or not tool_calls:
+                return message.get("content") or "", response
 
+            rounds += 1
+            messages.append({"role": "assistant", "content": message.get("content") or "", "tool_calls": tool_calls})
+            for call in tool_calls[:MAX_CALLS_PER_ROUND]:
+                function = call.get("function") or {}
+                messages.append({
+                    "role": "tool",
+                    "tool_name": function.get("name") or "web_search",
+                    "content": await self._run_tool_call(function, sources),
+                })
+
+    async def _openai_chat(
+        self, messages: list[dict[str, Any]], use_tools: bool, sources: list[str]
+    ) -> tuple[str, Any]:
         provider_key = self.config.ai_provider.lower()
         preset = PROVIDER_PRESETS.get(provider_key, {})
         base_url = self.config.api_base_url or preset.get("default_url", "http://localhost:1234/v1")
@@ -133,29 +227,45 @@ class OllamaService:
             headers["HTTP-Referer"] = "https://github.com/DiscordChatBotxOllama"
             headers["X-Title"] = "Discord AI Companion"
 
-        payload: dict[str, Any] = {
-            "model": model,
-            "messages": messages_payload,
-            "temperature": self.config.temperature,
-            "top_p": self.config.top_p,
-            "max_tokens": self.config.num_predict,
-        }
-
         timeout = aiohttp.ClientTimeout(total=90)
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post(endpoint, json=payload, headers=headers) as resp:
-                if resp.status != 200:
-                    err_msg = await resp.text()
-                    raise RuntimeError(f"Cloud/API inference failed ({resp.status}): {err_msg}")
+            rounds = 0
+            while True:
+                offer_tools = use_tools and rounds < MAX_SEARCH_ROUNDS
+                payload: dict[str, Any] = {
+                    "model": model,
+                    "messages": messages,
+                    "temperature": self.config.temperature,
+                    "top_p": self.config.top_p,
+                    "max_tokens": self.config.num_predict,
+                }
+                if offer_tools:
+                    payload["tools"] = [WEB_SEARCH_TOOL]
 
-                data = await resp.json()
+                async with session.post(endpoint, json=payload, headers=headers) as resp:
+                    if resp.status != 200:
+                        err_msg = await resp.text()
+                        if offer_tools and resp.status in (400, 404, 422) and "tool" in err_msg.lower():
+                            logger.warning("Model '%s' rejected tools; answering without web search.", model)
+                            use_tools = False
+                            continue
+                        raise RuntimeError(f"Cloud/API inference failed ({resp.status}): {err_msg}")
+                    data = await resp.json()
+
                 choices = data.get("choices", [])
                 if not choices:
                     raise RuntimeError("No completions returned by API.")
+                message = choices[0].get("message") or {}
+                tool_calls = message.get("tool_calls") or []
+                if not offer_tools or not tool_calls:
+                    return message.get("content") or "", data
 
-                raw_content = choices[0].get("message", {}).get("content", "").strip()
-                cleaned_content = self.clean_think_tags(raw_content)
-                reaction, final_reply = self.extract_reaction(cleaned_content)
-
-                return LLMResponse(content=final_reply, reaction=reaction, raw=data)
-
+                rounds += 1
+                messages.append({"role": "assistant", "content": message.get("content"), "tool_calls": tool_calls})
+                for index, call in enumerate(tool_calls):
+                    # The API expects an answer for every tool call, even ones past the cap.
+                    if index < MAX_CALLS_PER_ROUND:
+                        content = await self._run_tool_call(call.get("function") or {}, sources)
+                    else:
+                        content = "Skipped: too many searches at once."
+                    messages.append({"role": "tool", "tool_call_id": call.get("id"), "content": content})

@@ -220,6 +220,9 @@ class BotConfig:
         "documents, or math problems, accurately transcribe and summarize the text. "
         "Identify subjects, objects, and key visual details clearly."
     )
+    search_enabled: bool = False  # Off by default: queries go to an outside search engine.
+    search_show_sources: bool = False
+    search_max_results: int = 5
 
     @classmethod
     def from_env(cls, env_path: str | None = None, require_token: bool = True) -> BotConfig:
@@ -270,6 +273,9 @@ class BotConfig:
                 "documents, or math problems, accurately transcribe and summarize the text. "
                 "Identify subjects, objects, and key visual details clearly.",
             ),
+            search_enabled=os.getenv("SEARCH_ENABLED", "false").strip().lower() in ("true", "1", "yes"),
+            search_show_sources=os.getenv("SEARCH_SHOW_SOURCES", "false").strip().lower() in ("true", "1", "yes"),
+            search_max_results=_env_num("SEARCH_MAX_RESULTS", 5, int),
         )
 
     def _update_env_file(self, updates: dict[str, str], env_path: str = ".env") -> None:
@@ -338,6 +344,9 @@ class BotConfig:
             "VISION_MODEL": self.vision_model,
             "VISION_MAX_DIMENSION": str(self.vision_max_dimension),
             "VISION_NUM_PREDICT": str(self.vision_num_predict),
+            "SEARCH_ENABLED": "true" if self.search_enabled else "false",
+            "SEARCH_SHOW_SOURCES": "true" if self.search_show_sources else "false",
+            "SEARCH_MAX_RESULTS": str(self.search_max_results),
         }
         updates["SYSTEM_PROMPT"] = self.system_prompt
         for k, v in updates.items():

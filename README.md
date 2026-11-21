@@ -2,7 +2,7 @@
 
 A self-hosted AI chatbot for Discord with a desktop control panel. Run it on local models through [Ollama](https://ollama.com/), or connect it to any OpenAI-compatible API. Each channel gets persistent conversation memory, image understanding, and a persona you can fully customize.
 
-The bot runs on your own machine. With a local model, no message content leaves your computer.
+The bot runs on your own machine. With a local model and web search off, no message content leaves your computer.
 
 ---
 
@@ -24,6 +24,12 @@ The bot runs on your own machine. With a local model, no message content leaves 
 **Vision**
 - Image attachments are described by a separate vision model (for example `qwen2.5vl` or `moondream`), which also reads text in images.
 - Images are downscaled in memory and discarded after analysis. Only the text description is kept in the conversation history.
+
+**Web search** (off by default)
+- The bot can look things up on DuckDuckGo when a question needs current information, such as news, releases, prices or scores. With a model that supports tool calling (most recent Qwen, Llama and cloud models), it decides on its own when to search.
+- Custom AI commands can have **Search the web first** turned on. They search for `{query}` before answering, which works with any model. The built-in `/search` command does this.
+- An optional `Sources:` line lists the links behind a reply.
+- The bot is told today's date, so "latest" and "this week" mean the right thing.
 
 **Customization**
 - **Personas:** edit the system prompt or choose a built-in preset. The default persona is a playful "tsundere" character; replace it with whatever fits your server.
@@ -136,6 +142,9 @@ The desktop app writes to this same file when you save changes. The headless mod
 | `VISION_ENABLED` | `true` | Analyze image attachments. |
 | `VISION_MODEL` | `qwen2.5vl:7b-instruct-q4_K_M` | Ollama vision model. |
 | `VISION_MAX_DIMENSION` / `VISION_NUM_PREDICT` | `1536` / `1024` | Maximum image size in pixels before analysis, and maximum length of the description in tokens. |
+| `SEARCH_ENABLED` | `false` | Let the bot search the web through DuckDuckGo. |
+| `SEARCH_SHOW_SOURCES` | `false` | Add a `Sources:` line with up to three links under replies that used search. |
+| `SEARCH_MAX_RESULTS` | `5` | Results given to the model per search. |
 
 Moderation rules and custom commands are saved separately, in `data/moderation_settings.json` and `data/custom_commands.json`. If either file can't be read, it is renamed to `.broken` and kept rather than overwritten.
 
@@ -152,7 +161,7 @@ Chat with the bot by mentioning it or sending it a DM. The commands below work b
 | `/clear_memory` | Admin | Clears the conversation memory for the current channel. |
 | `/forget_me user:@member` | Admin | Deletes every stored message involving that user. |
 | `/wipe_database` | Admin | Deletes all stored conversations in every channel. |
-| `/roast`, `/translate`, `/summarize`, `/rules` | Everyone | Built-in custom commands. You can edit or delete them in the app. |
+| `/roast`, `/translate`, `/summarize`, `/rules`, `/search` | Everyone | Built-in custom commands. You can edit or delete them in the app. `/search` needs web search turned on. |
 
 ---
 
@@ -222,6 +231,7 @@ Plugins run with the same permissions as the bot. Only install plugins you trust
 - **Images:** the image itself is never stored, only the text description from the vision model.
 - **How to delete data:** use `/forget_me`, `/clear_memory` or `/wipe_database`, or the memory inspector in the app.
 - **Cloud providers:** if you choose one, conversation content is sent to that provider under its terms.
+- **Web search:** when it's on, search queries the model writes (based on what users asked) are sent to DuckDuckGo and the search engines it falls back to, even with a local model. Search results are not stored; only the bot's reply is.
 
 Let your server members know the bot keeps chat history.
 

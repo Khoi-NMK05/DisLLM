@@ -10,6 +10,7 @@ from bot.memory import MemoryManager
 from bot.moderation import ModerationManager
 from bot.plugins import PluginManager
 from bot.services.ollama_service import OllamaService
+from bot.services.search_service import SearchService
 from bot.services.vision_service import VisionService
 from bot.utils.image import ImageProcessor
 from bot.utils.text import TextSplitter
@@ -52,7 +53,8 @@ class TsundereBot(commands.Bot):
         self.memory_manager = memory_manager or MemoryManager(
             max_turns=config.max_history_turns, db_manager=self.db_manager
         )
-        self.ollama_service = ollama_service or OllamaService(config=config)
+        self.search_service = SearchService(config=config)
+        self.ollama_service = ollama_service or OllamaService(config=config, search_service=self.search_service)
         self.vision_service = vision_service or VisionService(config=config)
         self.image_processor = image_processor or ImageProcessor(max_dimension=config.vision_max_dimension)
         self.text_splitter = text_splitter or TextSplitter(default_limit=1950)
