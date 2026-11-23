@@ -1,6 +1,6 @@
 # 📝 Project Update Log
 
-All notable changes, file modifications, and new feature implementations for **DiscordChatBotxOllama** will be documented in this file.
+All notable changes, file modifications, and new feature implementations for **DisLLM** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 

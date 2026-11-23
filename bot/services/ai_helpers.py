@@ -81,28 +81,37 @@ SYSTEM_PROMPT_PRESETS = {
 CUSTOM_PERSONAS_PATH = "data/personas.json"
 
 
-def load_custom_personas(path: str = CUSTOM_PERSONAS_PATH) -> dict[str, str]:
+def _resolve_personas_path(path: str | None) -> str:
+    if path is not None:
+        return path
+    from bot.paths import get_personas_path
+    return get_personas_path()
+
+
+def load_custom_personas(path: str | None = None) -> dict[str, str]:
     """Returns user-saved persona presets as {name: prompt}; empty if the file is missing or broken."""
+    target = _resolve_personas_path(path)
     try:
-        with open(path, encoding="utf-8") as f:
+        with open(target, encoding="utf-8") as f:
             data = json.load(f)
     except FileNotFoundError:
         return {}
     except (OSError, ValueError) as err:
-        logger.warning("Could not read custom personas from %s: %s", path, err)
+        logger.warning("Could not read custom personas from %s: %s", target, err)
         return {}
     if not isinstance(data, dict):
         return {}
     return {str(k): str(v) for k, v in data.items() if str(k).strip() and isinstance(v, str)}
 
 
-def save_custom_personas(personas: dict[str, str], path: str = CUSTOM_PERSONAS_PATH) -> None:
+def save_custom_personas(personas: dict[str, str], path: str | None = None) -> None:
     """Writes user-saved persona presets, replacing the file atomically."""
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    tmp = f"{path}.tmp"
+    target = _resolve_personas_path(path)
+    os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+    tmp = f"{target}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(personas, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, path)
+    os.replace(tmp, target)
 
 
 async def fetch_ollama_tags(host: str = "http://localhost:11434") -> list[str]:

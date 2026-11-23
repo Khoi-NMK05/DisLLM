@@ -11,7 +11,8 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -33,9 +34,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from gui.update_dialog import UpdateDialog
 from gui.widgets import Card, StatusLabel
 from bot.database import DatabaseManager
 from bot.moderation import ModerationManager
+from bot.paths import get_app_data_dir
+from bot.updater import check_for_updates
+from bot.version import APP_NAME, APP_VERSION
 
 if TYPE_CHECKING:
     from gui.main_window import MainWindow
@@ -151,15 +156,17 @@ class SettingsTab(QWidget):
         return group
 
     def _create_app_preferences_card(self) -> Card:
-        group = Card("Application Preferences & System Tray")
+        group = Card("Application Preferences, Updates & User Data")
         layout = group.body
         layout.setSpacing(10)
 
         self.chk_minimize_to_tray = QCheckBox("Minimize to Windows System Tray on close [X]")
         self.chk_start_minimized = QCheckBox("Start application minimized to System Tray")
+        self.chk_auto_check_updates = QCheckBox("Check for updates automatically on startup")
 
         layout.addWidget(self.chk_minimize_to_tray)
         layout.addWidget(self.chk_start_minimized)
+        layout.addWidget(self.chk_auto_check_updates)
 
         # Save Button
         self.btn_save_settings = QPushButton("Save Moderation && Preferences")
@@ -170,6 +177,27 @@ class SettingsTab(QWidget):
         self.lbl_pref_status = StatusLabel("")
         self.lbl_pref_status.setProperty("class", "muted")
         layout.addWidget(self.lbl_pref_status)
+
+        # Updates & Persistent Data Folder
+        meta_label = QLabel(f"{APP_NAME} v{APP_VERSION}  •  Data folder: {get_app_data_dir()}")
+        meta_label.setWordWrap(True)
+        meta_label.setProperty("class", "muted")
+        layout.addWidget(meta_label)
+
+        tools_row = QHBoxLayout()
+        self.btn_check_updates = QPushButton("Check for Updates")
+        self.btn_check_updates.clicked.connect(self._on_check_updates_clicked)
+        tools_row.addWidget(self.btn_check_updates)
+
+        self.btn_open_data_folder = QPushButton("Open Data Folder")
+        self.btn_open_data_folder.clicked.connect(self._on_open_data_folder)
+        tools_row.addWidget(self.btn_open_data_folder)
+        tools_row.addStretch()
+        layout.addLayout(tools_row)
+
+        self.lbl_update_status = StatusLabel("")
+        self.lbl_update_status.setProperty("class", "muted")
+        layout.addWidget(self.lbl_update_status)
 
         return group
 
@@ -248,6 +276,7 @@ class SettingsTab(QWidget):
         self.spin_rate_limit.setValue(s.rate_limit_per_minute)
         self.chk_minimize_to_tray.setChecked(s.minimize_to_tray_on_close)
         self.chk_start_minimized.setChecked(s.start_minimized)
+        self.chk_auto_check_updates.setChecked(s.auto_check_updates)
         admin_id = self.main_window.config.admin_user_id
         self.txt_admin_id.setText(str(admin_id) if admin_id else "")
 
@@ -331,6 +360,7 @@ class SettingsTab(QWidget):
         self.mod_manager.settings.rate_limit_per_minute = self.spin_rate_limit.value()
         self.mod_manager.settings.minimize_to_tray_on_close = self.chk_minimize_to_tray.isChecked()
         self.mod_manager.settings.start_minimized = self.chk_start_minimized.isChecked()
+        self.mod_manager.settings.auto_check_updates = self.chk_auto_check_updates.isChecked()
 
         self.mod_manager.save()
 
@@ -340,6 +370,55 @@ class SettingsTab(QWidget):
 
         self.lbl_pref_status.setText("Settings saved successfully.")
         self.lbl_pref_status.setStyleSheet("color: #23a55a;")
+
+    # -------------------------------------------------------------------------
+    # Updates & Data Folder Actions
+    # -------------------------------------------------------------------------
+
+    def _on_open_data_folder(self) -> None:
+        data_root = get_app_data_dir()
+        data_root.mkdir(parents=True, exist_ok=True)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(data_root)))
+
+    def _on_check_updates_clicked(self) -> None:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.lbl_update_status.setText("Cannot check for updates without an active event loop.")
+            return
+        loop.create_task(self.check_for_updates_async(silent=False))
+
+    async def check_for_updates_async(self, silent: bool = False) -> None:
+        """Checks GitHub Releases for a newer version of DisLLM."""
+        self.btn_check_updates.setEnabled(False)
+        if not silent:
+            self.lbl_update_status.setText("Checking GitHub Releases...")
+            self.lbl_update_status.setStyleSheet("color: #80848e;")
+
+        try:
+            has_update, release = await check_for_updates(current_version=APP_VERSION)
+        except Exception as err:
+            logger.warning("Update check failed: %s", err)
+            if not silent:
+                self.lbl_update_status.setText(f"Update check failed: {err}")
+                self.lbl_update_status.setStyleSheet("color: #f0b232;")
+            self.btn_check_updates.setEnabled(True)
+            return
+
+        self.btn_check_updates.setEnabled(True)
+
+        if has_update and release is not None:
+            self.lbl_update_status.setText(f"Update available: v{release.version} (installed: v{APP_VERSION})")
+            self.lbl_update_status.setStyleSheet("color: #23a55a;")
+            self.main_window.status_bar.showMessage(f"Update available: {APP_NAME} v{release.version}")
+            dlg = UpdateDialog(release=release, main_window=self.main_window, parent=self)
+            dlg.exec()
+        elif not silent:
+            if release is None:
+                self.lbl_update_status.setText(f"No published releases found yet (current: v{APP_VERSION}).")
+            else:
+                self.lbl_update_status.setText(f"You're up to date (v{APP_VERSION}).")
+            self.lbl_update_status.setStyleSheet("color: #23a55a;")
 
     # -------------------------------------------------------------------------
     # Memory Inspector Logic

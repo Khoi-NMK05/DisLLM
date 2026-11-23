@@ -6,6 +6,8 @@ from typing import Any
 
 import aiosqlite
 
+from bot.paths import get_db_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -15,8 +17,8 @@ class DatabaseManager:
     user-specific data, and channel context using asynchronous I/O.
     """
 
-    def __init__(self, db_path: str = "data/chatbot.db") -> None:
-        self.db_path = db_path
+    def __init__(self, db_path: str | None = None) -> None:
+        self.db_path = db_path if db_path is not None else get_db_path()
         self._conn: aiosqlite.Connection | None = None
 
     async def initialize(self) -> None:

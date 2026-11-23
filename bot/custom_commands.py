@@ -17,6 +17,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from bot.paths import get_custom_commands_path
 from bot.utils.text import TextSplitter, format_sources
 
 logger = logging.getLogger(__name__)
@@ -118,8 +119,8 @@ class CustomCommand:
 class CustomCommandManager:
     """Manages creation, serialization, and dynamic registration of custom commands."""
 
-    def __init__(self, file_path: str = DEFAULT_COMMANDS_PATH) -> None:
-        self.file_path = file_path
+    def __init__(self, file_path: str | None = None) -> None:
+        self.file_path = file_path or get_custom_commands_path()
         self.commands: list[CustomCommand] = []
         self._load()
 

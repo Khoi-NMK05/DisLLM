@@ -10,7 +10,10 @@ import ast
 import importlib
 import logging
 import os
+import sys
 from typing import TYPE_CHECKING
+
+from bot.paths import get_plugins_dir
 
 if TYPE_CHECKING:
     from discord.ext import commands
@@ -20,7 +23,7 @@ logger = logging.getLogger(__name__)
 PLUGINS_DIR = "plugins"
 
 EXAMPLE_PLUGIN_CODE = '''"""
-Example Discord Cog Plugin for Discord AI Companion.
+Example Discord Cog Plugin for DisLLM.
 Drop any custom .py cog into the plugins/ directory to extend the bot!
 """
 
@@ -50,13 +53,16 @@ async def setup(bot: commands.Bot) -> None:
 class PluginManager:
     """Manages discovery and dynamic lifecycle of custom cogs in the plugins/ folder."""
 
-    def __init__(self, plugins_dir: str = PLUGINS_DIR) -> None:
-        self.plugins_dir = plugins_dir
+    def __init__(self, plugins_dir: str | None = None) -> None:
+        self.plugins_dir = plugins_dir or get_plugins_dir()
         self.ensure_plugins_directory()
 
     def ensure_plugins_directory(self) -> None:
         """Ensures plugins/ directory and an example plugin file exist."""
         os.makedirs(self.plugins_dir, exist_ok=True)
+        parent_dir = os.path.dirname(os.path.abspath(self.plugins_dir))
+        if parent_dir and parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
         init_file = os.path.join(self.plugins_dir, "__init__.py")
         if not os.path.exists(init_file):
             with open(init_file, "w", encoding="utf-8") as f:

@@ -1,1 +1,1 @@
-"""Unit tests package for DiscordChatBotxOllama."""
+"""Unit tests package for DisLLM."""

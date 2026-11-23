@@ -1,5 +1,5 @@
 """
-Main Desktop Application Launcher for Discord AI Companion.
+Main Desktop Application Launcher for DisLLM.
 Runs PySide6 GUI with an integrated qasync asyncio event loop.
 """
 
@@ -20,6 +20,8 @@ from PySide6.QtWidgets import QApplication
 import qasync
 
 from bot.config import BotConfig
+from bot.paths import ensure_runtime_dirs, migrate_legacy_data_if_needed
+from bot.version import APP_NAME, APP_VERSION
 from gui.main_window import MainWindow
 from gui.theme import DARK_THEME_QSS
 
@@ -32,9 +34,14 @@ def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
+    # Migrate legacy exe-local data into %APPDATA%\DisLLM on first upgrade, then ensure dirs exist
+    migrate_legacy_data_if_needed()
+    ensure_runtime_dirs()
+
     app = QApplication(sys.argv)
-    app.setApplicationName("Discord AI Companion")
-    app.setOrganizationName("TsundereBot")
+    app.setApplicationName(APP_NAME)
+    app.setOrganizationName(APP_NAME)
+    app.setApplicationVersion(APP_VERSION)
     app.setStyleSheet(DARK_THEME_QSS)
 
     # Integrate Qt event loop with Python asyncio

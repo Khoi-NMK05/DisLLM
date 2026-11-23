@@ -12,6 +12,8 @@ import os
 import time
 from dataclasses import asdict, dataclass, field
 
+from bot.paths import get_moderation_settings_path
+
 logger = logging.getLogger(__name__)
 
 MODERATION_SETTINGS_PATH = "data/moderation_settings.json"
@@ -26,13 +28,14 @@ class ModerationSettings:
     rate_limit_per_minute: int = 10
     minimize_to_tray_on_close: bool = True
     start_minimized: bool = False
+    auto_check_updates: bool = True
 
 
 class ModerationManager:
     """Controls server privacy filtering, rate limiting, and app preferences."""
 
-    def __init__(self, file_path: str = MODERATION_SETTINGS_PATH) -> None:
-        self.file_path = file_path
+    def __init__(self, file_path: str | None = None) -> None:
+        self.file_path = file_path or get_moderation_settings_path()
         self.settings = ModerationSettings()
         self._user_call_timestamps: dict[int, list[float]] = {}
         self.load()

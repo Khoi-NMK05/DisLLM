@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from bot.paths import get_db_path, get_env_path
 
 try:
     from dotenv import find_dotenv, load_dotenv
@@ -208,7 +210,7 @@ class BotConfig:
     system_prompt: str = DEFAULT_SYSTEM_PROMPT
     presence_text: str = "@ me to chat!"
     admin_user_id: int = 0  # 0 = nobody can run admin commands
-    db_path: str = "data/chatbot.db"
+    db_path: str = field(default_factory=get_db_path)
     separate_messages: bool = True
     message_delay: float = 0.4
     vision_enabled: bool = True
@@ -230,11 +232,15 @@ class BotConfig:
         if env_path:
             load_dotenv(dotenv_path=env_path)
         else:
-            dotenv_path = find_dotenv(usecwd=True)
-            if dotenv_path:
-                load_dotenv(dotenv_path=dotenv_path)
+            app_env = get_env_path()
+            if os.path.exists(app_env):
+                load_dotenv(dotenv_path=app_env)
             else:
-                load_dotenv()
+                dotenv_path = find_dotenv(usecwd=True)
+                if dotenv_path:
+                    load_dotenv(dotenv_path=dotenv_path)
+                else:
+                    load_dotenv()
 
         token = os.getenv("DISCORD_BOT_TOKEN", "").strip()
         if not token and require_token:
@@ -260,7 +266,7 @@ class BotConfig:
             system_prompt=os.getenv("SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT),
             presence_text=os.getenv("PRESENCE_TEXT", "@ me to chat!"),
             admin_user_id=_env_num("ADMIN_USER_ID", 0, int),
-            db_path=os.getenv("DB_PATH", "data/chatbot.db"),
+            db_path=os.getenv("DB_PATH") or get_db_path(),
             separate_messages=os.getenv("SEPARATE_MESSAGES", "true").strip().lower() in ("true", "1", "yes"),
             message_delay=_env_num("MESSAGE_DELAY", 0.4, float),
             vision_enabled=os.getenv("VISION_ENABLED", "true").strip().lower() in ("true", "1", "yes"),
@@ -278,11 +284,16 @@ class BotConfig:
             search_max_results=_env_num("SEARCH_MAX_RESULTS", 5, int),
         )
 
-    def _update_env_file(self, updates: dict[str, str], env_path: str = ".env") -> None:
+    def _update_env_file(self, updates: dict[str, str], env_path: str | None = None) -> None:
         """Utility to safely update or append multiple key-value pairs in the .env file."""
+        target_path = env_path or get_env_path()
+        parent = os.path.dirname(os.path.abspath(target_path))
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+
         lines: list[str] = []
-        if os.path.exists(env_path):
-            with open(env_path, "r", encoding="utf-8") as f:
+        if os.path.exists(target_path):
+            with open(target_path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
 
         remaining_keys = set(updates.keys())
@@ -310,24 +321,24 @@ class BotConfig:
             new_lines.append(f"{key}={updates[key]}\n")
 
         # Write a temp file and swap it in, so a crash mid-save can't lose the token.
-        tmp = f"{env_path}.tmp"
+        tmp = f"{target_path}.tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             f.writelines(new_lines)
-        os.replace(tmp, env_path)
+        os.replace(tmp, target_path)
 
-    def save_token(self, token: str, env_path: str = ".env") -> None:
+    def save_token(self, token: str, env_path: str | None = None) -> None:
         """Persists the updated token to self and the local .env file."""
         self.discord_token = token
         os.environ["DISCORD_BOT_TOKEN"] = token
         self._update_env_file({"DISCORD_BOT_TOKEN": token}, env_path=env_path)
 
-    def save_admin_id(self, user_id: int, env_path: str = ".env") -> None:
+    def save_admin_id(self, user_id: int, env_path: str | None = None) -> None:
         """Sets who may run admin commands (0 = nobody) and persists it to .env."""
         self.admin_user_id = user_id
         os.environ["ADMIN_USER_ID"] = str(user_id)
         self._update_env_file({"ADMIN_USER_ID": str(user_id)}, env_path=env_path)
 
-    def save_ai_settings(self, env_path: str = ".env") -> None:
+    def save_ai_settings(self, env_path: str | None = None) -> None:
         """Persists AI inference parameters to the local .env file."""
         updates = {
             "AI_PROVIDER": self.ai_provider,

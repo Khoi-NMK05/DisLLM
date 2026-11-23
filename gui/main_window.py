@@ -8,7 +8,7 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QCloseEvent, QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 
 from bot.config import BotConfig
 from bot.runner import BotRunner, BotState
+from bot.version import APP_NAME, APP_VERSION
 from gui.log_handler import QtLogHandler
 from gui.tabs import (
     AIModelsTab,
@@ -80,6 +81,21 @@ class MainWindow(QMainWindow):
         self._setup_logging_bridge()
         self._force_quit = False
         self._setup_system_tray()
+        self._schedule_startup_update_check()
+
+    def _schedule_startup_update_check(self) -> None:
+        """Runs a quiet background update check shortly after launch if enabled."""
+        if not self.settings_tab.mod_manager.settings.auto_check_updates:
+            return
+
+        def _trigger() -> None:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                return
+            loop.create_task(self.settings_tab.check_for_updates_async(silent=True))
+
+        QTimer.singleShot(2500, _trigger)
 
     def _setup_system_tray(self) -> None:
         """Sets up the Windows system tray icon and background menu."""
@@ -99,11 +115,11 @@ class MainWindow(QMainWindow):
         font.setBold(True)
         font.setPixelSize(16)
         painter.setFont(font)
-        painter.drawText(pix.rect(), Qt.AlignmentFlag.AlignCenter, "B")
+        painter.drawText(pix.rect(), Qt.AlignmentFlag.AlignCenter, "D")
         painter.end()
 
         self.tray_icon = QSystemTrayIcon(QIcon(pix), self)
-        self.tray_icon.setToolTip("Discord AI Companion")
+        self.tray_icon.setToolTip(f"{APP_NAME} v{APP_VERSION}")
 
         tray_menu = QMenu()
         act_show = QAction("Show Window", self)
@@ -140,7 +156,7 @@ class MainWindow(QMainWindow):
         self.close()
 
     def _init_ui(self) -> None:
-        self.setWindowTitle("Discord AI Companion")
+        self.setWindowTitle(f"{APP_NAME} v{APP_VERSION}")
         self.resize(1180, 760)
         self.setMinimumSize(960, 620)
 
@@ -184,7 +200,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        header = QLabel("Discord AI Companion")
+        header = QLabel(APP_NAME)
         header.setObjectName("sidebarHeader")
         layout.addWidget(header)
 
@@ -217,7 +233,7 @@ class MainWindow(QMainWindow):
         row.setContentsMargins(10, 10, 10, 10)
         row.setSpacing(10)
 
-        avatar = QLabel("B")
+        avatar = QLabel("D")
         avatar.setObjectName("statusAvatar")
         avatar.setFixedSize(34, 34)
         avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -282,7 +298,7 @@ class MainWindow(QMainWindow):
             event.ignore()
             self.hide()
             self.tray_icon.showMessage(
-                "Discord AI Companion",
+                APP_NAME,
                 "App minimized to Windows system tray. Double-click tray icon to restore.",
                 QSystemTrayIcon.MessageIcon.Information,
                 2500,
@@ -316,3 +332,25 @@ class MainWindow(QMainWindow):
             await self.runner.stop()
         except Exception as err:
             logger.warning("Error during window close cleanup: %s", err)
+
+    async def prepare_for_update_exit(self) -> None:
+        """Gracefully disconnects the bot and closes SQLite before launching an update."""
+        self._force_quit = True
+        if self.runner.is_running or self.runner.state == BotState.CONNECTING:
+            try:
+                await self.runner.stop()
+            except Exception as err:
+                logger.warning("Error stopping bot before update: %s", err)
+        try:
+            await self.settings_tab.db_manager.close()
+        except Exception as err:
+            logger.warning("Error closing database before update: %s", err)
+        if hasattr(self, "tray_icon"):
+            self.tray_icon.hide()
+
+    def quit_for_update(self) -> None:
+        """Exits the Qt application so the external updater can replace app binaries."""
+        self._force_quit = True
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()

@@ -224,8 +224,8 @@ class OllamaService:
         if self.config.api_key:
             headers["Authorization"] = f"Bearer {self.config.api_key}"
         if provider_key == "openrouter":
-            headers["HTTP-Referer"] = "https://github.com/DiscordChatBotxOllama"
-            headers["X-Title"] = "Discord AI Companion"
+            headers["HTTP-Referer"] = "https://github.com/Khoi-NMK05/DisLLM"
+            headers["X-Title"] = "DisLLM"
 
         timeout = aiohttp.ClientTimeout(total=90)
         async with aiohttp.ClientSession(timeout=timeout) as session:
